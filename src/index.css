@@ -1,35 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Cal+Sans&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Manrope:wght@200..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  }
+:root {
+  --color-yellow: #FFCC00;
+  --color-black: #000000;
+  --color-white: #FFFFFF;
+}
 
+@layer base {
   body {
-    @apply m-0 min-w-[320px] min-h-screen bg-gray-50;
+    @apply font-sans text-black bg-white;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
   }
 }
 
-@layer components {
-  .btn {
-    @apply px-4 py-2 rounded-lg transition-colors;
+@layer utilities {
+  .text-yellow {
+    color: var(--color-yellow);
   }
-
-  .btn-primary {
-    @apply bg-black text-white hover:bg-gray-800;
+  
+  .bg-yellow {
+    background-color: var(--color-yellow);
   }
-
-  .btn-secondary {
-    @apply border border-black text-black hover:bg-gray-100;
+  
+  .border-yellow {
+    border-color: var(--color-yellow);
   }
-
-  .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-black;
+  
+  .hover\:text-yellow:hover {
+    color: var(--color-yellow);
   }
-
-  .card {
-    @apply bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow;
+  
+  .hover\:bg-yellow:hover {
+    background-color: var(--color-yellow);
+  }
+  
+  .hover\:border-yellow:hover {
+    border-color: var(--color-yellow);
+  }
+  
+  .hover\:bg-yellow-600:hover {
+    background-color: #e6b800;
   }
 }
