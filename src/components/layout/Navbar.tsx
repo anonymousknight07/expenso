@@ -51,13 +51,15 @@ const Navbar = () => {
     <header className="bg-yellow border-b-2 border-black">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center">
-              <span className="font-serif text-xl text-black">
-                EX<span className="text-black">PENSO</span>
-              </span>
-            </Link>
-          </div>
+        <div className="flex items-center space-x-2">
+  {/* <img src="/logo.png" alt="Expenso Logo" className="w-8 h-8" /> */}
+  <Link to="/" className="flex items-center">
+    <span className="font-serif text-xl text-black">
+      EX<span className="text-black">PENSO</span>
+    </span>
+  </Link>
+</div>
+
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">

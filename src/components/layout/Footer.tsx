@@ -51,7 +51,7 @@ const Footer = () => {
           
           <div>
             <h3 className="text-lg font-semibold mb-4">Contact</h3>
-            <p className="text-gray-300 mb-2">support@expenso.app</p>
+            <p className="text-gray-300 mb-2">appquery.team@gmail.com</p>
             <p className="text-gray-300">123 Finance Street, Money City</p>
           </div>
         </div>

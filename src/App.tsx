@@ -8,6 +8,8 @@ import Reports from './pages/Reports';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Layout from './components/layout/Layout';
+import Terms from './pages/terms';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 function App() {
   return (
@@ -17,9 +19,10 @@ function App() {
         <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
         <Route path="/expenses" element={<Layout><Expenses /></Layout>} />
         <Route path="/income" element={<Layout><Income /></Layout>} />
-        <Route path="/terms" element={<Layout><terms /></Layout>} />
+        <Route path="/terms" element={<Layout><Terms /></Layout>} />
         <Route path="/budget" element={<Layout><Budget /></Layout>} />
         <Route path="/reports" element={<Layout><Reports /></Layout>} />
+        <Route path="/privacy" element={<Layout><PrivacyPolicy /></Layout>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Routes>
