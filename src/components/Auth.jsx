@@ -25,24 +25,39 @@ export default function Auth() {
     if (error) {
       alert(error.message);
     } else {
-      alert('Signed in!');
       navigate('/dashboard'); 
     }
     setLoading(false);
   };
 
-  const handleGoogleSignIn = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-    if (error) alert(error.message);
-  };
-
   return (
-    <div>
-      <input type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-      <button onClick={handleSignIn} disabled={loading}>Sign In</button>
-      <button onClick={handleSignUp} disabled={loading}>Sign Up</button>
-      <button onClick={handleGoogleSignIn}>Sign in with Google</button>
+    <div className="flex flex-col gap-4">
+      <input
+        type="email"
+        placeholder="Email"
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <button
+        onClick={handleSignIn}
+        disabled={loading}
+        className="w-full bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition-colors"
+      >
+        Sign In
+      </button>
+      <button
+        onClick={handleSignUp}
+        disabled={loading}
+        className="w-full border border-black text-black py-2 rounded-lg hover:bg-gray-100 transition-colors"
+      >
+        Sign Up
+      </button>
     </div>
   );
 }
