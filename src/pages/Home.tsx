@@ -1,7 +1,33 @@
 import { ArrowRight } from 'lucide-react';
 import Button from '../components/common/Button';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 const Home = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleGetStarted = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      navigate('/register');
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-12 md:py-20">
@@ -31,7 +57,7 @@ const Home = () => {
               Monitor your spending, set budgets, and achieve your financial goals.
             </p>
             <div className="mt-4">
-              <Button href="/register" variant="primary" className="inline-flex items-center">
+              <Button onClick={handleGetStarted} variant="primary" className="inline-flex items-center">
                 GET STARTED
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

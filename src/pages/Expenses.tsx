@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Calendar, Plus, Tag, Trash2, Edit, X, FileSpreadsheet, File as FilePdf, Share2, Menu } from 'lucide-react';
+import { Calendar, Plus, Tag, Trash2, X, FileSpreadsheet, File as FilePdf, Share2, Menu, AlertTriangle } from 'lucide-react';
 import Button from '../components/common/Button';
 import { useCurrency } from '../contexts/CurrencyContext';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
+import { useNavigate } from 'react-router-dom';
 
 interface Expense {
   id: string;
@@ -14,10 +15,31 @@ interface Expense {
   categories: Category[];
 }
 
+interface Income {
+  id: string;
+  amount: number;
+  date: string;
+}
+
 interface Category {
   id: string;
   name: string;
   color: string;
+}
+
+interface Budget {
+  amount: number;
+  category_id: string;
+  month: string;
+  spent: number;
+}
+
+interface BudgetAlert {
+  id: string;
+  budget_id: string;
+  type: 'warning' | 'exceeded';
+  created_at: string;
+  acknowledged: boolean;
 }
 
 const DEFAULT_COLORS = [
@@ -26,33 +48,88 @@ const DEFAULT_COLORS = [
 ];
 
 const Expenses = () => {
+  const navigate = useNavigate();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [incomes, setIncomes] = useState<Income[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const { currency } = useCurrency();
+  const { currency, calculateEffectiveIncome } = useCurrency();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const [showBudgetAlert, setShowBudgetAlert] = useState(false);
+  const [budgetAlertType, setBudgetAlertType] = useState<'warning' | 'exceeded'>('warning');
+  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
+  const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
+  const [isAddingExpense, setIsAddingExpense] = useState(false);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [showActionButtons, setShowActionButtons] = useState(false);
+  const [effectiveIncome, setEffectiveIncome] = useState(0);
+
   const [newExpense, setNewExpense] = useState({
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
     categories: [] as string[]
   });
+
   const [newCategory, setNewCategory] = useState({
     name: '',
     color: DEFAULT_COLORS[0]
   });
-  const [isAddingExpense, setIsAddingExpense] = useState(false);
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [showActionButtons, setShowActionButtons] = useState(false);
 
   useEffect(() => {
     fetchExpenses();
+    fetchIncomes();
     fetchCategories();
+    fetchAlerts();
+    updateEffectiveIncome();
   }, []);
 
+  const updateEffectiveIncome = async () => {
+    const income = await calculateEffectiveIncome();
+    setEffectiveIncome(income);
+  };
+
+  const fetchAlerts = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('budget_alerts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('acknowledged', false)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching alerts:', error);
+      return;
+    }
+
+    setAlerts(data || []);
+  };
+
+  const acknowledgeAlert = async (alertId: string) => {
+    const { error } = await supabase
+      .from('budget_alerts')
+      .update({ acknowledged: true })
+      .eq('id', alertId);
+
+    if (error) {
+      console.error('Error acknowledging alert:', error);
+      return;
+    }
+
+    setAlerts(alerts.filter(alert => alert.id !== alertId));
+  };
+
   const fetchExpenses = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return;
+
     const { data: expensesData, error: expensesError } = await supabase
       .from('expenses')
       .select(`
@@ -66,6 +143,7 @@ const Expenses = () => {
           )
         )
       `)
+      .eq('user_id', user.id)
       .order('date', { ascending: false });
 
     if (expensesError) {
@@ -83,10 +161,34 @@ const Expenses = () => {
     setExpenses(formattedExpenses);
   };
 
+  const fetchIncomes = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('income')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching incomes:', error);
+      return;
+    }
+
+    setIncomes(data);
+  };
+
   const fetchCategories = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return;
+
     const { data, error } = await supabase
       .from('expense_categories')
       .select('*')
+      .eq('user_id', user.id)
       .order('name');
 
     if (error) {
@@ -97,8 +199,97 @@ const Expenses = () => {
     setCategories(data);
   };
 
+  const calculateTotalExpenses = () => {
+    return expenses.reduce((total, expense) => total + expense.amount, 0);
+  };
+
+  const calculateIncomeAfterExpenses = () => {
+    return effectiveIncome - calculateTotalExpenses();
+  };
+
+  const checkBudgetLimit = async (amount: number, categoryId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return true;
+  
+    const { data: budgets, error: budgetError } = await supabase
+      .from('budgets')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('category_id', categoryId)
+      .eq('month', new Date().toISOString().slice(0, 7))
+      .single();
+  
+    if (budgetError || !budgets) {
+      return true;
+    }
+  
+    // This is where the error was happening
+    // We need to query expense_category_mappings to find all expenses with this category
+    const { data: mappings, error: mappingError } = await supabase
+      .from('expense_category_mappings')
+      .select('expense_id')
+      .eq('category_id', categoryId)
+      .eq('user_id', user.id);
+  
+    if (mappingError) {
+      console.error('Error checking expense mappings:', mappingError);
+      return true;
+    }
+  
+    // If no mappings exist, return true
+    if (!mappings || mappings.length === 0) {
+      return true;
+    }
+  
+    // Get the expense IDs for this category
+    const expenseIds = mappings.map(mapping => mapping.expense_id);
+  
+    // Query the expenses table with these IDs
+    const { data: expenses, error: expenseError } = await supabase
+      .from('expenses')
+      .select('amount, date')
+      .in('id', expenseIds)
+      .gte('date', new Date().toISOString().slice(0, 7));
+  
+    if (expenseError) {
+      console.error('Error checking expenses:', expenseError);
+      return true;
+    }
+  
+    const totalSpent = (expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
+    const newTotal = totalSpent + amount;
+  
+    if (newTotal >= budgets.amount) {
+      setBudgetAlertType('exceeded');
+      setSelectedBudget(budgets);
+      setShowBudgetAlert(true);
+      return false;
+    } else if (newTotal >= budgets.amount * 0.75) {
+      setBudgetAlertType('warning');
+      setSelectedBudget(budgets);
+      setShowBudgetAlert(true);
+      return true;
+    }
+  
+    return true;
+  };
+
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return;
+
+    const canProceed = await checkBudgetLimit(
+      parseFloat(newExpense.amount),
+      newExpense.categories[0]
+    );
+
+    if (!canProceed) {
+      return;
+    }
 
     const { data: expense, error: expenseError } = await supabase
       .from('expenses')
@@ -106,7 +297,7 @@ const Expenses = () => {
         amount: parseFloat(newExpense.amount),
         description: newExpense.description,
         date: newExpense.date,
-        user_id: (await supabase.auth.getUser()).data.user?.id
+        user_id: user.id
       }])
       .select()
       .single();
@@ -119,7 +310,8 @@ const Expenses = () => {
     if (newExpense.categories.length > 0) {
       const mappings = newExpense.categories.map(categoryId => ({
         expense_id: expense.id,
-        category_id: categoryId
+        category_id: categoryId,
+        user_id: user.id
       }));
 
       const { error: mappingError } = await supabase
@@ -128,6 +320,7 @@ const Expenses = () => {
 
       if (mappingError) {
         console.error('Error adding category mappings:', mappingError);
+        return;
       }
     }
 
@@ -144,12 +337,16 @@ const Expenses = () => {
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return;
+
     const { error } = await supabase
       .from('expense_categories')
       .insert([{ 
         name: newCategory.name,
         color: newCategory.color,
-        user_id: (await supabase.auth.getUser()).data.user?.id
+        user_id: user.id
       }]);
 
     if (error) {
@@ -224,27 +421,10 @@ const Expenses = () => {
     setIsAddingExpense(true);
   };
 
-  const calculateMonthlyTotal = () => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-    
-    return filterExpenses()
-      .filter(expense => {
-        const expenseDate = new Date(expense.date);
-        return expenseDate.getMonth() === currentMonth && 
-               expenseDate.getFullYear() === currentYear;
-      })
-      .reduce((total, expense) => total + expense.amount, 0);
-  };
-
-  const monthlyTotal = calculateMonthlyTotal();
-
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
     const filteredExpenses = filterExpenses();
     
-    // Group expenses by month
     const expensesByMonth = filteredExpenses.reduce((acc, expense) => {
       const date = new Date(expense.date);
       const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -263,11 +443,9 @@ const Expenses = () => {
       return acc;
     }, {});
 
-    // Create a sheet for each month
     Object.entries(expensesByMonth).forEach(([monthYear, monthExpenses]) => {
       const worksheet = XLSX.utils.json_to_sheet(monthExpenses);
       
-      // Add total row
       const totalAmount = monthExpenses.reduce((sum, exp) => 
         sum + parseFloat(exp.Amount.replace(currency.symbol, '')), 0
       );
@@ -293,7 +471,6 @@ const Expenses = () => {
     let yPos = 40;
     const pageHeight = doc.internal.pageSize.height;
     
-    // Group expenses by month
     const expensesByMonth = filteredExpenses.reduce((acc, expense) => {
       const date = new Date(expense.date);
       const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -351,6 +528,45 @@ const Expenses = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {alerts.length > 0 && (
+        <div className="mb-8">
+          {alerts.map(alert => (
+            <div
+              key={alert.id}
+              className={`mb-4 p-4 rounded-lg flex items-center justify-between ${
+                alert.type === 'exceeded' ? 'bg-red-100' : 'bg-yellow-100'
+              }`}
+            >
+              <div className="flex items-center">
+                <AlertTriangle className={`w-5 h-5 ${
+                  alert.type === 'exceeded' ? 'text-red-500' : 'text-yellow-500'
+                } mr-2`} />
+                <span>
+                  {alert.type === 'exceeded'
+                    ? 'You have exceeded your budget!'
+                    : 'You are approaching your budget limit!'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => navigate('/budget')}
+                  variant="outline"
+                  className="text-sm"
+                >
+                  View Budget
+                </Button>
+                <button
+                  onClick={() => acknowledgeAlert(alert.id)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-col gap-6 mb-8">
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center">
@@ -407,16 +623,31 @@ const Expenses = () => {
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-2">Monthly Overview</h2>
-          <p className="text-3xl font-bold text-yellow">
-            {currency.symbol}{monthlyTotal.toFixed(2)}
-          </p>
-          <p className="text-gray-600">Total expenses this month</p>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-2">Total Income</h2>
+            <p className="text-3xl font-bold text-green-500">
+              {currency.symbol}{effectiveIncome.toFixed(2)}
+            </p>
+            <p className="text-sm text-gray-500">After leave deductions</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-2">Total Expenses</h2>
+            <p className="text-3xl font-bold text-red-500">
+              {currency.symbol}{calculateTotalExpenses().toFixed(2)}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-2">Income After Expenses</h2>
+            <p className={`text-3xl font-bold ${calculateIncomeAfterExpenses() >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {currency.symbol}{calculateIncomeAfterExpenses().toFixed(2)}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Share Modal */}
       {isShareModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
@@ -448,7 +679,6 @@ const Expenses = () => {
         </div>
       )}
 
-      {/* Categories Section */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
           <h2 className="text-xl font-semibold">Categories</h2>
@@ -497,7 +727,6 @@ const Expenses = () => {
         </div>
       </div>
 
-      {/* Add Category Modal */}
       {isAddingCategory && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
@@ -546,7 +775,6 @@ const Expenses = () => {
         </div>
       )}
 
-      {/* Add Expense Modal */}
       {isAddingExpense && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
@@ -630,7 +858,50 @@ const Expenses = () => {
         </div>
       )}
 
-      {/* Expenses List/Calendar View */}
+      {showBudgetAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Budget Alert</h2>
+            <p className="mb-4">
+              {budgetAlertType === 'exceeded'
+                ? "You've exceeded the budget for this category. Would you like to proceed?"
+                : "You're approaching the budget limit for this category."}
+            </p>
+            <div className="flex justify-end gap-2">
+              {budgetAlertType === 'exceeded' ? (
+                <>
+                  <Button
+                    onClick={() => {
+                      setShowBudgetAlert(false);
+                      handleAddExpense(new Event('submit') as any);
+                    }}
+                    variant="outline"
+                  >
+                    Proceed Anyway
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowBudgetAlert(false);
+                      navigate('/budget');
+                    }}
+                    variant="primary"
+                  >
+                    Adjust Budget
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => setShowBudgetAlert(false)}
+                  variant="primary"
+                >
+                  Okay
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewMode === 'list' ? (
         <div className="space-y-4">
           {Array.from(groupExpensesByDate()).map(([date, dayExpenses]) => (
