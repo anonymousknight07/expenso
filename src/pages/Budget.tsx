@@ -29,23 +29,28 @@ interface Income {
 const Budget = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [monthlyIncome, setMonthlyIncome] = useState<number>(0);
+  const [effectiveIncome, setEffectiveIncome] = useState<number>(0);
   const [isAddingBudget, setIsAddingBudget] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const { currency } = useCurrency();
+  const { currency, calculateEffectiveIncome } = useCurrency();
 
   const [newBudget, setNewBudget] = useState({
     category_id: '',
     amount: '',
     month: new Date().toISOString().slice(0, 7),
-    notification_threshold: 0.75, // Default to 75%
+    notification_threshold: 0.75,
   });
 
   useEffect(() => {
     fetchBudgets();
     fetchCategories();
-    fetchMonthlyIncome();
+    updateEffectiveIncome();
   }, []);
+
+  const updateEffectiveIncome = async () => {
+    const income = await calculateEffectiveIncome();
+    setEffectiveIncome(income);
+  };
 
   const fetchBudgets = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -93,37 +98,6 @@ const Budget = () => {
     setCategories(data || []);
   };
 
-  const fetchMonthlyIncome = async () => {
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const endOfMonth = new Date(startOfMonth);
-    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-    endOfMonth.setDate(0);
-    endOfMonth.setHours(23, 59, 59, 999);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('income')
-      .select('amount, date')
-      .eq('user_id', user.id)
-      .gte('date', startOfMonth.toISOString())
-      .lte('date', endOfMonth.toISOString())
-      .eq('is_holiday', false);
-
-    if (error) {
-      console.error('Error fetching income:', error);
-      return;
-    }
-
-    const total = (data || []).reduce((sum, income) => sum + income.amount, 0);
-    setMonthlyIncome(total);
-  };
-
   const handleAddBudget = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -131,7 +105,6 @@ const Budget = () => {
     
     if (!user) return;
 
-    // Set the date to the first day of the month
     const monthDate = `${newBudget.month}-01`;
 
     const { error } = await supabase
@@ -179,7 +152,7 @@ const Budget = () => {
   };
 
   const calculateSavings = () => {
-    return monthlyIncome - calculateTotalBudget();
+    return effectiveIncome - calculateTotalBudget();
   };
 
   const exportToExcel = () => {
@@ -197,7 +170,7 @@ const Budget = () => {
     const worksheet = XLSX.utils.json_to_sheet(data);
     
     XLSX.utils.sheet_add_aoa(worksheet, [
-      [`Monthly Income: ${currency.symbol}${monthlyIncome.toFixed(2)}`],
+      [`Monthly Income: ${currency.symbol}${effectiveIncome.toFixed(2)}`],
       [`Total Budget: ${currency.symbol}${calculateTotalBudget().toFixed(2)}`],
       [`Savings: ${currency.symbol}${calculateSavings().toFixed(2)}`]
     ], { origin: -1 });
@@ -215,7 +188,7 @@ const Budget = () => {
     let yPos = 40;
     
     doc.setFontSize(14);
-    doc.text(`Monthly Income: ${currency.symbol}${monthlyIncome.toFixed(2)}`, 20, yPos);
+    doc.text(`Monthly Income: ${currency.symbol}${effectiveIncome.toFixed(2)}`, 20, yPos);
     yPos += 10;
     doc.text(`Total Budget: ${currency.symbol}${calculateTotalBudget().toFixed(2)}`, 20, yPos);
     yPos += 10;
@@ -267,7 +240,7 @@ const Budget = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-2">Monthly Income</h2>
             <p className="text-3xl font-bold text-green-500">
-              {currency.symbol}{monthlyIncome.toFixed(2)}
+              {currency.symbol}{effectiveIncome.toFixed(2)}
             </p>
           </div>
 

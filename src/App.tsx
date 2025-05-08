@@ -8,7 +8,7 @@ import Reports from './pages/Reports';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Layout from './components/layout/Layout';
-import Terms from './pages/terms';
+import Terms from './pages/Terms';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 

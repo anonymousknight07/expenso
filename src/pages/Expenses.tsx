@@ -207,11 +207,13 @@ const Expenses = () => {
     return effectiveIncome - calculateTotalExpenses();
   };
 
-  const checkBudgetLimit = async (amount: number, categoryId: string) => {
+  const checkBudgetLimit = async (amount: number, categoryId: string | null) => {
+    if (!categoryId) return true;
+
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) return true;
-  
+
     const { data: budgets, error: budgetError } = await supabase
       .from('budgets')
       .select('*')
@@ -219,47 +221,55 @@ const Expenses = () => {
       .eq('category_id', categoryId)
       .eq('month', new Date().toISOString().slice(0, 7))
       .single();
-  
+
     if (budgetError || !budgets) {
       return true;
     }
-  
-    // This is where the error was happening
-    // We need to query expense_category_mappings to find all expenses with this category
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
     const { data: mappings, error: mappingError } = await supabase
       .from('expense_category_mappings')
       .select('expense_id')
       .eq('category_id', categoryId)
       .eq('user_id', user.id);
-  
+
     if (mappingError) {
       console.error('Error checking expense mappings:', mappingError);
       return true;
     }
-  
-    // If no mappings exist, return true
+
     if (!mappings || mappings.length === 0) {
+      if (amount >= budgets.amount) {
+        setBudgetAlertType('exceeded');
+        setSelectedBudget(budgets);
+        setShowBudgetAlert(true);
+        return false;
+      } else if (amount >= budgets.amount * 0.75) {
+        setBudgetAlertType('warning');
+        setSelectedBudget(budgets);
+        setShowBudgetAlert(true);
+        return true;
+      }
       return true;
     }
-  
-    // Get the expense IDs for this category
+
     const expenseIds = mappings.map(mapping => mapping.expense_id);
-  
-    // Query the expenses table with these IDs
+
     const { data: expenses, error: expenseError } = await supabase
       .from('expenses')
       .select('amount, date')
       .in('id', expenseIds)
-      .gte('date', new Date().toISOString().slice(0, 7));
-  
+      .gte('date', currentMonth);
+
     if (expenseError) {
       console.error('Error checking expenses:', expenseError);
       return true;
     }
-  
+
     const totalSpent = (expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
     const newTotal = totalSpent + amount;
-  
+
     if (newTotal >= budgets.amount) {
       setBudgetAlertType('exceeded');
       setSelectedBudget(budgets);
@@ -271,7 +281,7 @@ const Expenses = () => {
       setShowBudgetAlert(true);
       return true;
     }
-  
+
     return true;
   };
 
@@ -282,56 +292,98 @@ const Expenses = () => {
     
     if (!user) return;
 
-    const canProceed = await checkBudgetLimit(
-      parseFloat(newExpense.amount),
-      newExpense.categories[0]
-    );
+    try {
+      // First, insert the expense without category
+      const { data: expense, error: expenseError } = await supabase
+        .from('expenses')
+        .insert([{
+          amount: parseFloat(newExpense.amount),
+          description: newExpense.description,
+          date: newExpense.date,
+          user_id: user.id
+        }])
+        .select()
+        .single();
 
-    if (!canProceed) {
-      return;
-    }
-
-    const { data: expense, error: expenseError } = await supabase
-      .from('expenses')
-      .insert([{
-        amount: parseFloat(newExpense.amount),
-        description: newExpense.description,
-        date: newExpense.date,
-        user_id: user.id
-      }])
-      .select()
-      .single();
-
-    if (expenseError) {
-      console.error('Error adding expense:', expenseError);
-      return;
-    }
-
-    if (newExpense.categories.length > 0) {
-      const mappings = newExpense.categories.map(categoryId => ({
-        expense_id: expense.id,
-        category_id: categoryId,
-        user_id: user.id
-      }));
-
-      const { error: mappingError } = await supabase
-        .from('expense_category_mappings')
-        .insert(mappings);
-
-      if (mappingError) {
-        console.error('Error adding category mappings:', mappingError);
+      if (expenseError) {
+        console.error('Error adding expense:', expenseError);
         return;
       }
-    }
 
-    setNewExpense({
-      amount: '',
-      description: '',
-      date: new Date().toISOString().split('T')[0],
-      categories: []
-    });
-    setIsAddingExpense(false);
-    fetchExpenses();
+      // Then, create the category mappings if there are any categories
+      if (newExpense.categories.length > 0) {
+        const mappings = newExpense.categories.map(categoryId => ({
+          expense_id: expense.id,
+          category_id: categoryId,
+          user_id: user.id
+        }));
+
+        const { error: mappingError } = await supabase
+          .from('expense_category_mappings')
+          .insert(mappings);
+
+        if (mappingError) {
+          console.error('Error adding category mappings:', mappingError);
+          // If mapping fails, delete the expense to maintain data consistency
+          await supabase.from('expenses').delete().eq('id', expense.id);
+          return;
+        }
+      }
+
+      // Reset form and refresh data
+      setNewExpense({
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+        categories: []
+      });
+      setIsAddingExpense(false);
+      fetchExpenses();
+    } catch (error) {
+      console.error('Unexpected error:', error);
+    }
+  };
+
+  const checkIfExceedsBudget = async (categoryId: string) => {
+    if (!categoryId) return { exceeds: false };
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { exceeds: false };
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    const { data: budget } = await supabase
+      .from('budgets')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('category_id', categoryId)
+      .eq('month', currentMonth)
+      .single();
+      
+    if (!budget) return { exceeds: false };
+    
+    const { data: mappings } = await supabase
+      .from('expense_category_mappings')
+      .select('expense_id')
+      .eq('category_id', categoryId)
+      .eq('user_id', user.id);
+      
+    if (!mappings || mappings.length === 0) return { exceeds: false };
+    
+    const expenseIds = mappings.map(m => m.expense_id);
+    const { data: expenses } = await supabase
+      .from('expenses')
+      .select('amount')
+      .in('id', expenseIds)
+      .gte('date', currentMonth);
+      
+    const totalSpent = (expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
+    
+    return {
+      exceeds: totalSpent >= budget.amount,
+      approaching: totalSpent >= budget.amount * 0.75,
+      budget
+    };
   };
 
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -832,6 +884,7 @@ const Expenses = () => {
                       style={{
                         backgroundColor: newExpense.categories.includes(category.id)
                           ? category.color
+                          
                           : `${category.color}33`,
                         color: newExpense.categories.includes(category.id) ? 'white' : 'black'
                       }}
