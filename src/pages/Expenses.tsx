@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Calendar, Plus, Tag, Trash2, Edit } from 'lucide-react';
+import { Calendar, Plus, Tag, Trash2, Edit, X, FileSpreadsheet, File as FilePdf, Share2, Menu } from 'lucide-react';
 import Button from '../components/common/Button';
+import { useCurrency } from '../contexts/CurrencyContext';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
 
 interface Expense {
   id: string;
@@ -27,6 +30,9 @@ const Expenses = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const { currency } = useCurrency();
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const [newExpense, setNewExpense] = useState({
     amount: '',
     description: '',
@@ -39,6 +45,7 @@ const Expenses = () => {
   });
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [showActionButtons, setShowActionButtons] = useState(false);
 
   useEffect(() => {
     fetchExpenses();
@@ -51,6 +58,7 @@ const Expenses = () => {
       .select(`
         *,
         expense_category_mappings (
+          category_id,
           expense_categories (
             id,
             name,
@@ -67,9 +75,9 @@ const Expenses = () => {
 
     const formattedExpenses = expensesData.map(expense => ({
       ...expense,
-      categories: expense.expense_category_mappings.map(
-        (mapping: any) => mapping.expense_categories
-      )
+      categories: expense.expense_category_mappings
+        .map((mapping: any) => mapping.expense_categories)
+        .filter(Boolean)
     }));
 
     setExpenses(formattedExpenses);
@@ -171,6 +179,21 @@ const Expenses = () => {
     fetchExpenses();
   };
 
+  const handleDeleteCategory = async (id: string) => {
+    const { error } = await supabase
+      .from('expense_categories')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting category:', error);
+      return;
+    }
+
+    setSelectedCategories(prev => prev.filter(catId => catId !== id));
+    fetchCategories();
+  };
+
   const filterExpenses = () => {
     if (selectedCategories.length === 0) return expenses;
 
@@ -201,26 +224,229 @@ const Expenses = () => {
     setIsAddingExpense(true);
   };
 
+  const calculateMonthlyTotal = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    return filterExpenses()
+      .filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate.getMonth() === currentMonth && 
+               expenseDate.getFullYear() === currentYear;
+      })
+      .reduce((total, expense) => total + expense.amount, 0);
+  };
+
+  const monthlyTotal = calculateMonthlyTotal();
+
+  const exportToExcel = () => {
+    const workbook = XLSX.utils.book_new();
+    const filteredExpenses = filterExpenses();
+    
+    // Group expenses by month
+    const expensesByMonth = filteredExpenses.reduce((acc, expense) => {
+      const date = new Date(expense.date);
+      const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+      
+      if (!acc[monthYear]) {
+        acc[monthYear] = [];
+      }
+      
+      acc[monthYear].push({
+        Date: expense.date,
+        Description: expense.description,
+        Amount: `${currency.symbol}${expense.amount.toFixed(2)}`,
+        Categories: expense.categories.map(cat => cat.name).join(', ')
+      });
+      
+      return acc;
+    }, {});
+
+    // Create a sheet for each month
+    Object.entries(expensesByMonth).forEach(([monthYear, monthExpenses]) => {
+      const worksheet = XLSX.utils.json_to_sheet(monthExpenses);
+      
+      // Add total row
+      const totalAmount = monthExpenses.reduce((sum, exp) => 
+        sum + parseFloat(exp.Amount.replace(currency.symbol, '')), 0
+      );
+      
+      XLSX.utils.sheet_add_aoa(worksheet, 
+        [[`Total: ${currency.symbol}${totalAmount.toFixed(2)}`]], 
+        { origin: -1 }
+      );
+      
+      XLSX.utils.book_append_sheet(workbook, worksheet, monthYear);
+    });
+
+    XLSX.writeFile(workbook, 'Expenses.xlsx');
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const filteredExpenses = filterExpenses();
+    
+    doc.setFontSize(20);
+    doc.text('Expense Report', 20, 20);
+    
+    let yPos = 40;
+    const pageHeight = doc.internal.pageSize.height;
+    
+    // Group expenses by month
+    const expensesByMonth = filteredExpenses.reduce((acc, expense) => {
+      const date = new Date(expense.date);
+      const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+      
+      if (!acc[monthYear]) {
+        acc[monthYear] = [];
+      }
+      
+      acc[monthYear].push(expense);
+      return acc;
+    }, {});
+
+    Object.entries(expensesByMonth).forEach(([monthYear, monthExpenses]) => {
+      if (yPos > pageHeight - 40) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(16);
+      doc.text(monthYear, 20, yPos);
+      yPos += 10;
+
+      const totalAmount = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+      monthExpenses.forEach((expense) => {
+        if (yPos > pageHeight - 40) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setFontSize(12);
+        doc.text(`${expense.date}: ${expense.description}`, 20, yPos);
+        doc.text(`${currency.symbol}${expense.amount.toFixed(2)}`, 150, yPos);
+        yPos += 7;
+      });
+
+      doc.setFontSize(14);
+      doc.text(`Total: ${currency.symbol}${totalAmount.toFixed(2)}`, 20, yPos);
+      yPos += 20;
+    });
+
+    const pdfBlob = doc.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    setShareUrl(pdfUrl);
+    doc.save('Expenses.pdf');
+  };
+
+  const shareFile = (type: 'whatsapp' | 'email') => {
+    if (type === 'whatsapp') {
+      window.open(`https://wa.me/?text=Check out my expense report: ${shareUrl}`);
+    } else {
+      window.location.href = `mailto:?subject=Expense Report&body=Check out my expense report: ${shareUrl}`;
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Expenses</h1>
-        <div className="flex gap-4">
-          <Button
-            onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
-            variant="outline"
-          >
-            <Calendar className="w-5 h-5" />
-          </Button>
-          <Button
-            onClick={() => setIsAddingExpense(true)}
-            variant="primary"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add Expense
-          </Button>
+      <div className="flex flex-col gap-6 mb-8">
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold">Expenses</h1>
+            <button
+              onClick={() => setShowActionButtons(!showActionButtons)}
+              className="md:hidden bg-gray-100 p-2 rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
+          
+          <div className={`flex flex-col md:flex-row gap-2 ${showActionButtons ? 'flex' : 'hidden md:flex'}`}>
+            <Button
+              onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
+              variant="outline"
+              className="w-full md:w-auto"
+            >
+              <Calendar className="w-5 h-5" />
+              <span className="ml-2 md:hidden">Toggle View</span>
+            </Button>
+            <Button
+              onClick={exportToExcel}
+              variant="outline"
+              className="w-full md:w-auto"
+            >
+              <FileSpreadsheet className="w-5 h-5 mr-2" />
+              Export Excel
+            </Button>
+            <Button
+              onClick={exportToPDF}
+              variant="outline"
+              className="w-full md:w-auto"
+            >
+              <FilePdf className="w-5 h-5 mr-2" />
+              Export PDF
+            </Button>
+            <Button
+              onClick={() => setIsShareModalOpen(true)}
+              variant="outline"
+              className="w-full md:w-auto"
+            >
+              <Share2 className="w-5 h-5 mr-2" />
+              Share
+            </Button>
+            <Button
+              onClick={() => setIsAddingExpense(true)}
+              variant="primary"
+              className="w-full md:w-auto"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Add Expense
+            </Button>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-2">Monthly Overview</h2>
+          <p className="text-3xl font-bold text-yellow">
+            {currency.symbol}{monthlyTotal.toFixed(2)}
+          </p>
+          <p className="text-gray-600">Total expenses this month</p>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Share Report</h2>
+            <div className="space-y-4">
+              <Button
+                onClick={() => shareFile('whatsapp')}
+                variant="outline"
+                className="w-full"
+              >
+                Share via WhatsApp
+              </Button>
+              <Button
+                onClick={() => shareFile('email')}
+                variant="outline"
+                className="w-full"
+              >
+                Share via Email
+              </Button>
+              <Button
+                onClick={() => setIsShareModalOpen(false)}
+                variant="primary"
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Categories Section */}
       <div className="mb-8">
@@ -247,7 +473,7 @@ const Expenses = () => {
                     : [...prev, category.id]
                 )
               }}
-              className={`px-3 py-1 rounded-full text-sm flex items-center gap-2`}
+              className="px-3 py-1 rounded-full text-sm flex items-center gap-2 group relative"
               style={{
                 backgroundColor: selectedCategories.includes(category.id)
                   ? category.color
@@ -257,6 +483,15 @@ const Expenses = () => {
             >
               <Tag className="w-4 h-4" />
               {category.name}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteCategory(category.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 ml-1 hover:text-red-500 transition-opacity"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </button>
           ))}
         </div>
@@ -264,7 +499,7 @@ const Expenses = () => {
 
       {/* Add Category Modal */}
       {isAddingCategory && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Add New Category</h2>
             <form onSubmit={handleAddCategory}>
@@ -313,12 +548,12 @@ const Expenses = () => {
 
       {/* Add Expense Modal */}
       {isAddingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Add New Expense</h2>
             <form onSubmit={handleAddExpense}>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Amount</label>
+                <label className="block text-sm font-medium mb-1">Amount ({currency.symbol})</label>
                 <input
                   type="number"
                   step="0.01"
@@ -403,9 +638,9 @@ const Expenses = () => {
               <h3 className="font-semibold mb-3">{new Date(date).toLocaleDateString()}</h3>
               <div className="space-y-3">
                 {dayExpenses.map((expense: Expense) => (
-                  <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                  <div key={expense.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-gray-50 rounded gap-3">
                     <div>
-                      <p className="font-medium">${expense.amount.toFixed(2)}</p>
+                      <p className="font-medium">{currency.symbol}{expense.amount.toFixed(2)}</p>
                       <p className="text-gray-600">{expense.description}</p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {expense.categories.map(category => (
@@ -422,7 +657,7 @@ const Expenses = () => {
                         ))}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 justify-end">
                       <button
                         onClick={() => handleDeleteExpense(expense.id)}
                         className="text-red-500 hover:text-red-600"
@@ -437,44 +672,46 @@ const Expenses = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="grid grid-cols-7 gap-4">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="text-center font-medium">
-                {day}
-              </div>
-            ))}
-            {Array.from({ length: 35 }, (_, i) => {
-              const date = new Date();
-              date.setDate(date.getDate() - date.getDay() + i);
-              const dateStr = date.toISOString().split('T')[0];
-              const dayExpenses = expenses.filter(e => e.date === dateStr);
-              const totalAmount = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-              
-              return (
-                <div
-                  key={i}
-                  onClick={() => handleCalendarDayClick(dateStr)}
-                  className={`p-2 border rounded min-h-[100px] cursor-pointer hover:bg-gray-50 transition-colors ${
-                    dayExpenses.length > 0 ? 'bg-yellow/10' : ''
-                  }`}
-                >
-                  <div className="text-right text-sm text-gray-600">
-                    {date.getDate()}
-                  </div>
-                  {dayExpenses.length > 0 && (
-                    <div className="mt-2">
-                      <div className="text-sm font-medium text-black">
-                        ${totalAmount.toFixed(2)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {dayExpenses.length} expense{dayExpenses.length !== 1 ? 's' : ''}
-                      </div>
-                    </div>
-                  )}
+        <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
+          <div className="min-w-[768px]">
+            <div className="grid grid-cols-7 gap-4">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="text-center font-medium">
+                  {day}
                 </div>
-              );
-            })}
+              ))}
+              {Array.from({ length: 35 }, (_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() - date.getDay() + i);
+                const dateStr = date.toISOString().split('T')[0];
+                const dayExpenses = expenses.filter(e => e.date === dateStr);
+                const totalAmount = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+                
+                return (
+                  <div
+                    key={i}
+                    onClick={() => handleCalendarDayClick(dateStr)}
+                    className={`p-2 border rounded min-h-[80px] cursor-pointer hover:bg-gray-50 transition-colors ${
+                      dayExpenses.length > 0 ? 'bg-yellow/10' : ''
+                    }`}
+                  >
+                    <div className="text-right text-sm text-gray-600">
+                      {date.getDate()}
+                    </div>
+                    {dayExpenses.length > 0 && (
+                      <div className="mt-2">
+                        <div className="text-sm font-medium text-black">
+                          {currency.symbol}{totalAmount.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {dayExpenses.length} expense{dayExpenses.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

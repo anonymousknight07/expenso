@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { currency, setCurrency, availableCurrencies } = useCurrency();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -51,15 +54,13 @@ const Navbar = () => {
     <header className="bg-yellow border-b-2 border-black">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-        <div className="flex items-center space-x-2">
-  {/* <img src="/logo.png" alt="Expenso Logo" className="w-8 h-8" /> */}
-  <Link to="/" className="flex items-center">
-    <span className="font-serif text-xl text-black">
-      EX<span className="text-black">PENSO</span>
-    </span>
-  </Link>
-</div>
-
+          <div className="flex items-center space-x-2">
+            <Link to="/" className="flex items-center">
+              <span className="font-serif text-xl text-black">
+                EX<span className="text-black">PENSO</span>
+              </span>
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
@@ -79,6 +80,32 @@ const Navbar = () => {
           </nav>
 
           <div className="hidden md:flex items-center space-x-4">
+            {user && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsCurrencyMenuOpen(!isCurrencyMenuOpen)}
+                  className="text-sm font-medium text-black hover:text-gray-600 transition-colors px-3 py-2 rounded-md border border-black"
+                >
+                  {currency.code} ({currency.symbol})
+                </button>
+                {isCurrencyMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                    {availableCurrencies.map((curr) => (
+                      <button
+                        key={curr.code}
+                        onClick={() => {
+                          setCurrency(curr);
+                          setIsCurrencyMenuOpen(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        {curr.name} ({curr.symbol})
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {user ? (
               <button
                 onClick={handleSignOut}
@@ -133,6 +160,25 @@ const Navbar = () => {
                   {item.name}
                 </Link>
               ))}
+              {user && (
+                <div className="py-2 border-t border-gray-200">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Select Currency</p>
+                  <select
+                    value={currency.code}
+                    onChange={(e) => {
+                      const newCurrency = availableCurrencies.find(c => c.code === e.target.value);
+                      if (newCurrency) setCurrency(newCurrency);
+                    }}
+                    className="w-full px-3 py-2 border rounded text-sm"
+                  >
+                    {availableCurrencies.map((curr) => (
+                      <option key={curr.code} value={curr.code}>
+                        {curr.name} ({curr.symbol})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200">
                 {user ? (
                   <button
