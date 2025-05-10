@@ -13,6 +13,7 @@ interface Budget {
   month: string;
   spent: number;
   notification_threshold: number;
+  category: Category;
 }
 
 interface Category {
@@ -21,17 +22,11 @@ interface Category {
   color: string;
 }
 
-interface Income {
-  amount: number;
-  date: string;
-}
-
 const Budget = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [effectiveIncome, setEffectiveIncome] = useState<number>(0);
   const [isAddingBudget, setIsAddingBudget] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { currency, calculateEffectiveIncome } = useCurrency();
 
   const [newBudget, setNewBudget] = useState({
@@ -41,16 +36,16 @@ const Budget = () => {
     notification_threshold: 0.75,
   });
 
+  const updateEffectiveIncome = async () => {
+    const income = await calculateEffectiveIncome();
+    setEffectiveIncome(income);
+  };
+
   useEffect(() => {
     fetchBudgets();
     fetchCategories();
     updateEffectiveIncome();
   }, []);
-
-  const updateEffectiveIncome = async () => {
-    const income = await calculateEffectiveIncome();
-    setEffectiveIncome(income);
-  };
 
   const fetchBudgets = async () => {
     const { data: { user } } = await supabase.auth.getUser();

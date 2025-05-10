@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Calendar, Plus, Tag, Trash2, X, FileSpreadsheet, File as FilePdf, Share2, Menu, AlertTriangle } from 'lucide-react';
 import Button from '../components/common/Button';
 import { useCurrency } from '../contexts/CurrencyContext';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import { useNavigate } from 'react-router-dom';
 
 interface Expense {
   id: string;
@@ -13,12 +13,6 @@ interface Expense {
   description: string;
   date: string;
   categories: Category[];
-}
-
-interface Income {
-  id: string;
-  amount: number;
-  date: string;
 }
 
 interface Category {
@@ -50,7 +44,6 @@ const DEFAULT_COLORS = [
 const Expenses = () => {
   const navigate = useNavigate();
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [incomes, setIncomes] = useState<Income[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -65,6 +58,11 @@ const Expenses = () => {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [showActionButtons, setShowActionButtons] = useState(false);
   const [effectiveIncome, setEffectiveIncome] = useState(0);
+  const [exceededBudgets, setExceededBudgets] = useState<{
+    categoryName: string;
+    amount: number;
+    spent: number;
+  }[]>([]);
 
   const [newExpense, setNewExpense] = useState({
     amount: '',
@@ -78,17 +76,49 @@ const Expenses = () => {
     color: DEFAULT_COLORS[0]
   });
 
-  useEffect(() => {
-    fetchExpenses();
-    fetchIncomes();
-    fetchCategories();
-    fetchAlerts();
-    updateEffectiveIncome();
-  }, []);
-
   const updateEffectiveIncome = async () => {
     const income = await calculateEffectiveIncome();
     setEffectiveIncome(income);
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+    fetchCategories();
+    fetchAlerts();
+    fetchExceededBudgets();
+    updateEffectiveIncome();
+  }, []);
+
+  const fetchExceededBudgets = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    const { data: budgets, error } = await supabase
+      .from('budgets')
+      .select(`
+        *,
+        expense_categories (
+          name
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('month', currentMonth)
+      .gt('spent', 'amount');
+
+    if (error) {
+      console.error('Error fetching exceeded budgets:', error);
+      return;
+    }
+
+    setExceededBudgets(
+      budgets.map(budget => ({
+        categoryName: budget.expense_categories.name,
+        amount: budget.amount,
+        spent: budget.spent
+      }))
+    );
   };
 
   const fetchAlerts = async () => {
@@ -161,25 +191,6 @@ const Expenses = () => {
     setExpenses(formattedExpenses);
   };
 
-  const fetchIncomes = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('income')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching incomes:', error);
-      return;
-    }
-
-    setIncomes(data);
-  };
-
   const fetchCategories = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -196,7 +207,7 @@ const Expenses = () => {
       return;
     }
 
-    setCategories(data);
+    setCategories(data || []);
   };
 
   const calculateTotalExpenses = () => {
@@ -207,93 +218,92 @@ const Expenses = () => {
     return effectiveIncome - calculateTotalExpenses();
   };
 
-  const checkBudgetLimit = async (amount: number, categoryId: string | null) => {
-    if (!categoryId) return true;
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      const { data: expense, error: expenseError } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          expense_category_mappings!inner (
+            category_id
+          )
+        `)
+        .eq('id', id)
+        .single();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) return true;
-
-    const { data: budgets, error: budgetError } = await supabase
-      .from('budgets')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('category_id', categoryId)
-      .eq('month', new Date().toISOString().slice(0, 7))
-      .single();
-
-    if (budgetError || !budgets) {
-      return true;
-    }
-
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    
-    const { data: mappings, error: mappingError } = await supabase
-      .from('expense_category_mappings')
-      .select('expense_id')
-      .eq('category_id', categoryId)
-      .eq('user_id', user.id);
-
-    if (mappingError) {
-      console.error('Error checking expense mappings:', mappingError);
-      return true;
-    }
-
-    if (!mappings || mappings.length === 0) {
-      if (amount >= budgets.amount) {
-        setBudgetAlertType('exceeded');
-        setSelectedBudget(budgets);
-        setShowBudgetAlert(true);
-        return false;
-      } else if (amount >= budgets.amount * 0.75) {
-        setBudgetAlertType('warning');
-        setSelectedBudget(budgets);
-        setShowBudgetAlert(true);
-        return true;
+      if (expenseError) {
+        console.error('Error fetching expense:', expenseError);
+        return;
       }
-      return true;
+
+      const expenseMonth = new Date(expense.date).toISOString().slice(0, 7);
+
+      for (const mapping of expense.expense_category_mappings) {
+        const { data: budget, error: budgetError } = await supabase
+          .from('budgets')
+          .select('*')
+          .eq('category_id', mapping.category_id)
+          .eq('month', expenseMonth)
+          .single();
+
+        if (budgetError) {
+          console.error('Error fetching budget:', budgetError);
+          continue;
+        }
+
+        if (budget) {
+          const newSpent = Math.max(0, budget.spent - expense.amount);
+          const { error: updateError } = await supabase
+            .from('budgets')
+            .update({ spent: newSpent })
+            .eq('id', budget.id);
+
+          if (updateError) {
+            console.error('Error updating budget:', updateError);
+          }
+
+          if (newSpent < budget.amount * budget.notification_threshold) {
+            const { error: alertDeleteError } = await supabase
+              .from('budget_alerts')
+              .delete()
+              .eq('budget_id', budget.id)
+              .eq('acknowledged', false);
+
+            if (alertDeleteError) {
+              console.error('Error deleting alerts:', alertDeleteError);
+            }
+          }
+        }
+      }
+
+      const { error: deleteError } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        console.error('Error deleting expense:', deleteError);
+        return;
+      }
+
+      await Promise.all([
+        fetchExpenses(),
+        fetchAlerts(),
+        fetchExceededBudgets()
+      ]);
+
+    } catch (error) {
+      console.error('Unexpected error during expense deletion:', error);
     }
-
-    const expenseIds = mappings.map(mapping => mapping.expense_id);
-
-    const { data: expenses, error: expenseError } = await supabase
-      .from('expenses')
-      .select('amount, date')
-      .in('id', expenseIds)
-      .gte('date', currentMonth);
-
-    if (expenseError) {
-      console.error('Error checking expenses:', expenseError);
-      return true;
-    }
-
-    const totalSpent = (expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
-    const newTotal = totalSpent + amount;
-
-    if (newTotal >= budgets.amount) {
-      setBudgetAlertType('exceeded');
-      setSelectedBudget(budgets);
-      setShowBudgetAlert(true);
-      return false;
-    } else if (newTotal >= budgets.amount * 0.75) {
-      setBudgetAlertType('warning');
-      setSelectedBudget(budgets);
-      setShowBudgetAlert(true);
-      return true;
-    }
-
-    return true;
   };
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (!user) return;
 
     try {
-      // First, insert the expense without category
       const { data: expense, error: expenseError } = await supabase
         .from('expenses')
         .insert([{
@@ -310,7 +320,6 @@ const Expenses = () => {
         return;
       }
 
-      // Then, create the category mappings if there are any categories
       if (newExpense.categories.length > 0) {
         const mappings = newExpense.categories.map(categoryId => ({
           expense_id: expense.id,
@@ -324,13 +333,83 @@ const Expenses = () => {
 
         if (mappingError) {
           console.error('Error adding category mappings:', mappingError);
-          // If mapping fails, delete the expense to maintain data consistency
           await supabase.from('expenses').delete().eq('id', expense.id);
           return;
         }
+
+        const currentMonth = new Date(expense.date).toISOString().slice(0, 7);
+        
+        for (const categoryId of newExpense.categories) {
+          const { data: budget, error: budgetError } = await supabase
+            .from('budgets')
+            .select('*')
+            .eq('category_id', categoryId)
+            .eq('month', currentMonth)
+            .single();
+
+          if (!budgetError && budget) {
+            const newSpent = budget.spent + parseFloat(newExpense.amount);
+            
+            await supabase
+              .from('budgets')
+              .update({ spent: newSpent })
+              .eq('id', budget.id);
+
+            if (newSpent >= budget.amount) {
+              const { data: existingAlert } = await supabase
+                .from('budget_alerts')
+                .select('*')
+                .eq('budget_id', budget.id)
+                .eq('type', 'exceeded')
+                .eq('acknowledged', false)
+                .single();
+
+              if (!existingAlert) {
+                await supabase
+                  .from('budget_alerts')
+                  .insert([{
+                    budget_id: budget.id,
+                    type: 'exceeded',
+                    user_id: user.id
+                  }]);
+
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Budget Alert', {
+                    body: `You have exceeded the budget for this category!`,
+                    icon: '/logo.png'
+                  });
+                }
+              }
+            } else if (newSpent >= budget.amount * budget.notification_threshold) {
+              const { data: existingAlert } = await supabase
+                .from('budget_alerts')
+                .select('*')
+                .eq('budget_id', budget.id)
+                .eq('type', 'warning')
+                .eq('acknowledged', false)
+                .single();
+
+              if (!existingAlert) {
+                await supabase
+                  .from('budget_alerts')
+                  .insert([{
+                    budget_id: budget.id,
+                    type: 'warning',
+                    user_id: user.id
+                  }]);
+
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Budget Warning', {
+                    body: `You are approaching your budget limit!`,
+                    icon: '/logo.png'
+                  });
+                }
+              }
+            }
+          }
+        }
       }
 
-      // Reset form and refresh data
       setNewExpense({
         amount: '',
         description: '',
@@ -338,53 +417,39 @@ const Expenses = () => {
         categories: []
       });
       setIsAddingExpense(false);
-      fetchExpenses();
+      await Promise.all([
+        fetchExpenses(),
+        fetchAlerts(),
+        fetchExceededBudgets()
+      ]);
     } catch (error) {
       console.error('Unexpected error:', error);
     }
   };
 
-  const checkIfExceedsBudget = async (categoryId: string) => {
-    if (!categoryId) return { exceeds: false };
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { exceeds: false };
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    
-    const { data: budget } = await supabase
-      .from('budgets')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('category_id', categoryId)
-      .eq('month', currentMonth)
-      .single();
-      
-    if (!budget) return { exceeds: false };
-    
-    const { data: mappings } = await supabase
-      .from('expense_category_mappings')
-      .select('expense_id')
-      .eq('category_id', categoryId)
-      .eq('user_id', user.id);
-      
-    if (!mappings || mappings.length === 0) return { exceeds: false };
-    
-    const expenseIds = mappings.map(m => m.expense_id);
-    const { data: expenses } = await supabase
-      .from('expenses')
-      .select('amount')
-      .in('id', expenseIds)
-      .gte('date', currentMonth);
-      
-    const totalSpent = (expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
-    
-    return {
-      exceeds: totalSpent >= budget.amount,
-      approaching: totalSpent >= budget.amount * 0.75,
-      budget
+  useEffect(() => {
+    const subscription = supabase
+      .channel('budget-alerts')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'budget_alerts'
+      }, () => {
+        fetchAlerts();
+        fetchExceededBudgets();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
     };
-  };
+  }, []);
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -414,20 +479,6 @@ const Expenses = () => {
     fetchCategories();
   };
 
-  const handleDeleteExpense = async (id: string) => {
-    const { error } = await supabase
-      .from('expenses')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting expense:', error);
-      return;
-    }
-
-    fetchExpenses();
-  };
-
   const handleDeleteCategory = async (id: string) => {
     const { error } = await supabase
       .from('expense_categories')
@@ -454,13 +505,13 @@ const Expenses = () => {
   };
 
   const groupExpensesByDate = () => {
-    const grouped = new Map();
+    const grouped = new Map<string, Expense[]>();
     filterExpenses().forEach(expense => {
       const date = expense.date;
       if (!grouped.has(date)) {
         grouped.set(date, []);
       }
-      grouped.get(date).push(expense);
+      grouped.get(date)?.push(expense);
     });
     return grouped;
   };
@@ -493,7 +544,7 @@ const Expenses = () => {
       });
       
       return acc;
-    }, {});
+    }, {} as Record<string, any[]>);
 
     Object.entries(expensesByMonth).forEach(([monthYear, monthExpenses]) => {
       const worksheet = XLSX.utils.json_to_sheet(monthExpenses);
@@ -533,7 +584,7 @@ const Expenses = () => {
       
       acc[monthYear].push(expense);
       return acc;
-    }, {});
+    }, {} as Record<string, Expense[]>);
 
     Object.entries(expensesByMonth).forEach(([monthYear, monthExpenses]) => {
       if (yPos > pageHeight - 40) {
@@ -554,9 +605,16 @@ const Expenses = () => {
         }
 
         doc.setFontSize(12);
-        doc.text(`${expense.date}: ${expense.description}`, 20, yPos);
+        const text = `${expense.date}: ${expense.description}`;
+        doc.text(text, 20, yPos);
         doc.text(`${currency.symbol}${expense.amount.toFixed(2)}`, 150, yPos);
         yPos += 7;
+
+        if (expense.categories.length > 0) {
+          doc.setFontSize(10);
+          doc.text(expense.categories.map(cat => cat.name).join(', '), 30, yPos);
+          yPos += 7;
+        }
       });
 
       doc.setFontSize(14);
@@ -580,6 +638,32 @@ const Expenses = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {exceededBudgets.length > 0 && (
+        <div className="mb-8 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-red-700">Budget Alert</h3>
+              <p className="text-red-600">
+                You have exceeded the budget for the following categories:
+              </p>
+              <ul className="mt-2 space-y-1">
+                {exceededBudgets.map((budget, index) => (
+                  <li key={index} className="text-red-600">
+                    {budget.categoryName}: Spent {currency.symbol}{budget.spent.toFixed(2)} of {currency.symbol}{budget.amount.toFixed(2)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <Link
+              to="/budget"
+              className="bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200 transition-colors"
+            >
+              Review Budget
+            </Link>
+          </div>
+        </div>
+      )}
+
       {alerts.length > 0 && (
         <div className="mb-8">
           {alerts.map(alert => (
@@ -860,7 +944,9 @@ const Expenses = () => {
                 <input
                   type="date"
                   value={newExpense.date}
-                  onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
+                  onChange={(e) =>
+                    setNewExpense({...newExpense, date: e.target.value})
+                  }
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
@@ -884,7 +970,6 @@ const Expenses = () => {
                       style={{
                         backgroundColor: newExpense.categories.includes(category.id)
                           ? category.color
-                          
                           : `${category.color}33`,
                         color: newExpense.categories.includes(category.id) ? 'white' : 'black'
                       }}
