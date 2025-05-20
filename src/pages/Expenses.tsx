@@ -64,6 +64,8 @@ const Expenses = () => {
     spent: number;
   }[]>([]);
 
+  
+
   const [newExpense, setNewExpense] = useState({
     amount: '',
     description: '',
@@ -75,6 +77,8 @@ const Expenses = () => {
     name: '',
     color: DEFAULT_COLORS[0]
   });
+
+  
 
   const updateEffectiveIncome = async () => {
     const income = await calculateEffectiveIncome();
@@ -89,37 +93,41 @@ const Expenses = () => {
     updateEffectiveIncome();
   }, []);
 
-  const fetchExceededBudgets = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+ const fetchExceededBudgets = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    
-    const { data: budgets, error } = await supabase
-      .from('budgets')
-      .select(`
-        *,
-        expense_categories (
-          name
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('month', currentMonth)
-      .gt('spent', 'amount');
+  // Change the date format to include the day (first day of month)
+  const today = new Date();
+  const currentYearMonth = today.toISOString().slice(0, 7);
+  const currentMonthFullDate = `${currentYearMonth}-01`;
+  
+  const { data: budgets, error } = await supabase
+    .from('budgets')
+    .select(`
+      *,
+      expense_categories (
+        name
+      )
+    `)
+    .eq('user_id', user.id)
+    .eq('month', currentMonthFullDate)  // Use full date here
+    .gt('spent', 'amount');
 
-    if (error) {
-      console.error('Error fetching exceeded budgets:', error);
-      return;
-    }
+  if (error) {
+    console.error('Error fetching exceeded budgets:', error);
+    return;
+  }
 
-    setExceededBudgets(
-      budgets.map(budget => ({
-        categoryName: budget.expense_categories.name,
-        amount: budget.amount,
-        spent: budget.spent
-      }))
-    );
-  };
+  setExceededBudgets(
+    budgets.map(budget => ({
+      categoryName: budget.expense_categories.name,
+      amount: budget.amount,
+      spent: budget.spent
+    }))
+  );
+};
+
 
   const fetchAlerts = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -237,14 +245,15 @@ const Expenses = () => {
       }
 
       const expenseMonth = new Date(expense.date).toISOString().slice(0, 7);
+      const expenseMonthFullDate = `${expenseMonth}-01`;
 
       for (const mapping of expense.expense_category_mappings) {
         const { data: budget, error: budgetError } = await supabase
-          .from('budgets')
-          .select('*')
-          .eq('category_id', mapping.category_id)
-          .eq('month', expenseMonth)
-          .single();
+  .from('budgets')
+  .select('*')
+  .eq('category_id', mapping.category_id)
+  .eq('month', expenseMonthFullDate)  // Use full date here instead of expenseMonth
+  .single();
 
         if (budgetError) {
           console.error('Error fetching budget:', budgetError);
@@ -338,15 +347,15 @@ const Expenses = () => {
         }
 
         const currentMonth = new Date(expense.date).toISOString().slice(0, 7);
+        const currentMonthFullDate = `${currentMonth}-01`;  // 
         
         for (const categoryId of newExpense.categories) {
           const { data: budget, error: budgetError } = await supabase
-            .from('budgets')
-            .select('*')
-            .eq('category_id', categoryId)
-            .eq('month', currentMonth)
-            .single();
-
+  .from('budgets')
+  .select('*')
+  .eq('category_id', categoryId)
+  .eq('month', currentMonthFullDate)  // Use full date here instead of currentMonth
+  .single();
           if (!budgetError && budget) {
             const newSpent = budget.spent + parseFloat(newExpense.amount);
             

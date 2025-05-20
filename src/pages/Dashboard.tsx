@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { Camera, Upload, Trophy, Star, Brain, Heart, ThumbsUp, Target, Plus, Share2 } from 'lucide-react';
+import { Camera, Trophy, Star, Brain, Heart, ThumbsUp, Target, Plus, Share2, Crown, Trash2, X } from 'lucide-react';
 import Button from '../components/common/Button';
 import { Pie, Bar } from 'react-chartjs-2';
 import {
@@ -30,10 +30,14 @@ interface UserProfile {
   id: string;
   first_name: string;
   last_name: string;
+  username: string;
   avatar_url: string | null;
   xp: number;
   level: number;
   health_score: number;
+  bio: string;
+  occupation: string;
+  last_active: string;
 }
 
 interface Goal {
@@ -52,6 +56,7 @@ interface WishlistItem {
   added_date: string;
   reflection: string | null;
   can_buy_date: string;
+  reviewed: boolean;
 }
 
 interface Achievement {
@@ -60,15 +65,6 @@ interface Achievement {
   unlocked_at: string;
   shared: boolean;
 }
-
-const moods = [
-  { name: 'Happy', emoji: '😊' },
-  { name: 'Neutral', emoji: '😐' },
-  { name: 'Stressed', emoji: '😓' },
-  { name: 'Impulsive', emoji: '🤔' },
-  { name: 'Guilty', emoji: '😔' },
-  { name: 'Satisfied', emoji: '😌' }
-];
 
 const Dashboard = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -82,8 +78,7 @@ const Dashboard = () => {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [showAddWishlistModal, setShowAddWishlistModal] = useState(false);
-  const [showMoodModal, setShowMoodModal] = useState(false);
-  const [mood, setMood] = useState<string>('');
+ 
   const [showBadgeNotification, setShowBadgeNotification] = useState(false);
   const [newBadge, setNewBadge] = useState<string>('');
   const [newGoal, setNewGoal] = useState({
@@ -97,6 +92,7 @@ const Dashboard = () => {
     reflection: '',
   });
   const { currency } = useCurrency();
+  const navigate = useNavigate();
 
   const badges = [
     { id: 'first_transaction', icon: Star, title: 'First Transaction', description: 'Made your first transaction' },
@@ -106,40 +102,16 @@ const Dashboard = () => {
     { id: 'goal_setter', icon: Target, title: 'Goal Setter', description: 'Created your first financial goal' },
   ];
 
-  useEffect(() => {
-    fetchProfile();
-    fetchFinancialData();
-    fetchGoals();
-    fetchWishlist();
-    fetchAchievements();
-    checkNewAchievements();
-  }, []);
-
-  const checkNewAchievements = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: newAchievements } = await supabase
-      .from('achievements')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('notified', false)
-      .single();
-
-    if (newAchievements) {
-      const badge = badges.find(b => b.id === newAchievements.badge_id);
-      if (badge) {
-        setNewBadge(badge.title);
-        setShowBadgeNotification(true);
-
-        // Mark achievement as notified
-        await supabase
-          .from('achievements')
-          .update({ notified: true })
-          .eq('id', newAchievements.id);
-      }
-    }
-  };
+useEffect(() => {
+  fetchProfile();
+  fetchFinancialData();
+  fetchGoals();
+  fetchWishlist();
+  fetchAchievements();
+  checkNewAchievements();
+  
+  trackUserActivity('dashboard_visit');
+}, []);
 
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -149,14 +121,16 @@ const Dashboard = () => {
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching profile:', error);
       return;
     }
 
-    setProfile(data);
+    if (data) {
+      setProfile(data);
+    }
   };
 
   const fetchFinancialData = async () => {
@@ -270,71 +244,93 @@ const Dashboard = () => {
     setAchievements(data || []);
   };
 
-  const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      setUploading(true);
+  const updateXPAndLevel = async (xpToAdd) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('You must select an image to upload.');
-      }
+    // Fetch current profile
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('xp, level')
+      .eq('id', user.id)
+      .single();
 
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+    if (!currentProfile) return;
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
+    // Calculate new XP and level
+    const newXP = currentProfile.xp + xpToAdd;
+    const newLevel = Math.floor(newXP / 100) + 1; // Level up every 100 XP
+    
+    // Update profile
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        xp: newXP,
+        level: newLevel
+      })
+      .eq('id', user.id);
 
-      if (uploadError) {
-        throw uploadError;
-      }
+    if (error) {
+      console.error('Error updating XP and level:', error);
+      return;
+    }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    // Update local state
+    setProfile(prev => ({
+      ...prev,
+      xp: newXP,
+      level: newLevel
+    }));
+  };
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: filePath })
-        .eq('id', user.id);
+  const trackUserActivity = async (activityType) => {
+    const xpRewards = {
+      'login': 5,
+      'achievement': 20,
+      'goal_created': 10,
+      'goal_completed': 30,
+      'wishlist_added': 5,
+      'budget_planned': 15,
+      'dashboard_visit': 2
+    };
 
-      if (updateError) {
-        throw updateError;
-      }
-
-      fetchProfile();
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-    } finally {
-      setUploading(false);
+    const xpToAdd = xpRewards[activityType] || 0;
+    if (xpToAdd > 0) {
+      await updateXPAndLevel(xpToAdd);
     }
   };
 
-  const calculateHealthScore = (data: any) => {
-    let score = 75; // Base score
+  const checkNewAchievements = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    // Factor 1: Savings Rate (30 points)
-    const savingsRate = (data.totalIncome - data.totalExpenses) / data.totalIncome;
-    score += Math.min(30, savingsRate * 100);
+    const { data: newAchievements, error } = await supabase
+      .from('achievements')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('notified', false)
+      .maybeSingle();
 
-    // Factor 2: Budget Adherence (20 points)
-    const budgetAdherence = data.withinBudget ? 20 : 0;
-    score += budgetAdherence;
+    if (error) {
+      console.error('Error fetching achievements:', error);
+      return;
+    }
 
-    // Factor 3: Regular Income (15 points)
-    const hasRegularIncome = data.regularIncome ? 15 : 0;
-    score += hasRegularIncome;
+    if (newAchievements) {
+      const badge = badges.find(b => b.id === newAchievements.badge_id);
+      if (badge) {
+        setNewBadge(badge.title);
+        setShowBadgeNotification(true);
 
-    // Factor 4: Emergency Fund (20 points)
-    const emergencyFundRatio = Math.min(1, data.emergencyFund / (data.monthlyExpenses * 6));
-    score += emergencyFundRatio * 20;
-
-    // Factor 5: Debt Management (15 points)
-    const debtToIncomeRatio = Math.min(1, 1 - (data.totalDebt / (data.yearlyIncome || 1)));
-    score += debtToIncomeRatio * 15;
-
-    return Math.min(100, Math.max(0, Math.round(score)));
+        await supabase
+          .from('achievements')
+          .update({ notified: true })
+          .eq('id', newAchievements.id);
+          
+        // Award XP for achievement
+        trackUserActivity('achievement');
+      }
+    }
   };
 
   const handleAddGoal = async (e: React.FormEvent) => {
@@ -350,6 +346,8 @@ const Dashboard = () => {
         title: newGoal.title,
         target_amount: parseFloat(newGoal.target_amount),
         deadline: newGoal.deadline,
+        completed: false,
+        current_amount: 0
       }]);
 
     if (error) {
@@ -360,8 +358,10 @@ const Dashboard = () => {
     setNewGoal({ title: '', target_amount: '', deadline: '' });
     setShowAddGoalModal(false);
     fetchGoals();
+    
+    // Award XP for creating a goal
+    trackUserActivity('goal_created');
 
-    // Check for goal_setter achievement
     if (!achievements.some(a => a.badge_id === 'goal_setter')) {
       await supabase
         .from('achievements')
@@ -370,7 +370,91 @@ const Dashboard = () => {
           badge_id: 'goal_setter',
         }]);
       fetchAchievements();
+      
+      trackUserActivity('achievement');
     }
+  };
+
+ const handleGoalCompletion = async (goal: Goal) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('goals')
+      .update({ 
+        completed: true,
+        current_amount: goal.target_amount 
+      })
+      .eq('id', goal.id);
+
+    if (error) {
+      console.error('Error updating goal:', error);
+      return;
+    }
+
+    alert(`🎉 Congratulations! You have achieved your goal: ${goal.title}`);
+    fetchGoals();
+    
+    // Award XP for completing a goal
+    trackUserActivity('goal_completed');
+    
+    // Check if user already has savings_champion badge
+    const { data: existingBadge } = await supabase
+      .from('achievements')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('badge_id', 'savings_champion')
+      .maybeSingle();
+
+    // If user doesn't have the badge yet, award it
+    if (!existingBadge) {
+      const { error: badgeError } = await supabase
+        .from('achievements')
+        .insert([{
+          user_id: user.id,
+          badge_id: 'savings_champion',
+          notified: false
+        }]);
+
+      if (badgeError) {
+        console.error('Error awarding badge:', badgeError);
+      } else {
+      
+        fetchAchievements();
+        checkNewAchievements();
+      }
+    }
+  };
+
+  const handleDeleteGoal = async (id: string) => {
+    const { error } = await supabase
+      .from('goals')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting goal:', error);
+      return;
+    }
+
+    fetchGoals();
+  };
+
+  const handleWishlistReview = async (item: WishlistItem, stillWantToBuy: boolean) => {
+    if (stillWantToBuy) {
+      navigate('/expenses');
+    } else {
+      const { error } = await supabase
+        .from('wishlist')
+        .delete()
+        .eq('id', item.id);
+
+      if (error) {
+        console.error('Error deleting wishlist item:', error);
+        return;
+      }
+    }
+    fetchWishlist();
   };
 
   const handleAddWishlistItem = async (e: React.FormEvent) => {
@@ -396,6 +480,22 @@ const Dashboard = () => {
     setNewWishlistItem({ title: '', price: '', reflection: '' });
     setShowAddWishlistModal(false);
     fetchWishlist();
+    
+    trackUserActivity('wishlist_added');
+  };
+
+  const handleDeleteWishlistItem = async (id: string) => {
+    const { error } = await supabase
+      .from('wishlist')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting wishlist item:', error);
+      return;
+    }
+
+    fetchWishlist();
   };
 
   const shareAchievement = async (achievement: Achievement) => {
@@ -413,12 +513,10 @@ const Dashboard = () => {
           url,
         });
       } else {
-        // Fallback to copying to clipboard
         await navigator.clipboard.writeText(`${text}\n${url}`);
         alert('Achievement details copied to clipboard!');
       }
 
-      // Mark achievement as shared
       await supabase
         .from('achievements')
         .update({ shared: true })
@@ -467,9 +565,27 @@ const Dashboard = () => {
     },
   };
 
+  useEffect(() => {
+    const checkWishlistItems = async () => {
+      const now = new Date();
+      const items = wishlistItems.filter(
+        item => !item.reviewed && new Date(item.can_buy_date) <= now
+      );
+
+      for (const item of items) {
+        const shouldBuy = confirm(
+          `Do you still want to buy "${item.title}"?\nPrice: ${currency.symbol}${item.price}`
+        );
+
+        await handleWishlistReview(item, shouldBuy);
+      }
+    };
+
+    checkWishlistItems();
+  }, [wishlistItems]);
+
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Badge Notification Modal */}
       {showBadgeNotification && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-sm w-full mx-4 text-center">
@@ -487,7 +603,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* User Profile Section */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <div className="flex flex-col md:flex-row items-center gap-6">
           <div className="relative">
@@ -502,20 +617,11 @@ const Dashboard = () => {
                 <Camera className="w-8 h-8 text-gray-400" />
               </div>
             )}
-            <label className="absolute bottom-0 right-0 bg-yellow p-2 rounded-full cursor-pointer">
-              <Upload className="w-4 h-4" />
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={uploadAvatar}
-                disabled={uploading}
-              />
-            </label>
+          
           </div>
           <div>
             <h1 className="text-2xl font-bold">
-              Welcome, {profile?.first_name} {profile?.last_name}!
+              Welcome, {profile?.first_name || 'User'}!
             </h1>
             <div className="mt-2 space-y-1">
               <p className="text-gray-600">Level {profile?.level || 1}</p>
@@ -526,12 +632,49 @@ const Dashboard = () => {
                 ></div>
               </div>
               <p className="text-sm text-gray-500">{profile?.xp || 0} XP</p>
+              {profile?.occupation && (
+                <p className="text-sm text-gray-600">{profile.occupation}</p>
+              )}
+              {profile?.bio && (
+                <p className="text-sm text-gray-600">{profile.bio}</p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Financial Overview */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4">Your Achievements</h2>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {badges.map(badge => {
+            const achieved = achievements.some(a => a.badge_id === badge.id);
+            return (
+              <div
+                key={badge.id}
+                className={`p-4 rounded-lg border text-center ${
+                  achieved ? 'bg-yellow/10 border-yellow' : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <badge.icon className={`w-8 h-8 mx-auto mb-2 ${
+                  achieved ? 'text-yellow' : 'text-gray-400'
+                }`} />
+                <h3 className="font-medium text-sm">{badge.title}</h3>
+                <p className="text-xs text-gray-500 mt-1">{badge.description}</p>
+                {achieved && (
+                  <button
+                    onClick={() => shareAchievement(achievements.find(a => a.badge_id === badge.id)!)}
+                    className="mt-2 text-xs text-yellow hover:text-yellow-600 flex items-center justify-center gap-1"
+                  >
+                    <Share2 className="w-3 h-3" />
+                    Share
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-2">Monthly Income</h2>
@@ -553,7 +696,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">Expense Categories</h2>
@@ -569,45 +711,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Financial Health */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Financial Health Score</h2>
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full border-4 border-green-500 flex items-center justify-center">
-              <span className="text-2xl font-bold">{profile?.health_score || 75}</span>
-            </div>
-            <div>
-              <p className="text-green-500 font-semibold">Good Standing</p>
-              <p className="text-sm text-gray-600 mt-1">
-                Tip: Set up automatic savings to improve your score
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Spending Mood</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {moods.map((m) => (
-              <button
-                key={m.name}
-                onClick={() => {
-                  setMood(m.name);
-                  setShowMoodModal(true);
-                }}
-                className={`p-4 rounded-lg border text-center hover:bg-gray-50 transition-colors ${
-                  mood === m.name ? 'border-yellow' : 'border-gray-200'
-                }`}
-              >
-                <div className="text-2xl mb-1">{m.emoji}</div>
-                <div className="text-sm">{m.name}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Goals and Wishlist */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
@@ -624,17 +727,33 @@ const Dashboard = () => {
           <div className="space-y-4">
             {goals.map(goal => (
               <div key={goal.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-medium">{goal.title}</h3>
-                  <span className="text-sm text-gray-500">
-                    Due: {new Date(goal.deadline).toLocaleDateString()}
-                  </span>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={goal.completed}
+                      onChange={() => !goal.completed && handleGoalCompletion(goal)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <h3 className="font-medium">{goal.title}</h3>
+                      <span className="text-sm text-gray-500">
+                        Due: {new Date(goal.deadline).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteGoal(goal.id)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
                 <div className="w-full h-2 bg-gray-200 rounded-full mb-2">
                   <div
-                    className="h-full bg-green-500 rounded-full"
+                    className={`h-full rounded-full ${goal.completed ? 'bg-green-500' : 'bg-blue-500'}`}
                     style={{
-                      width: `${(goal.current_amount / goal.target_amount) * 100}%`
+                      width: `${goal.completed ? 100 : (goal.current_amount / goal.target_amount) * 100}%`
                     }}
                   ></div>
                 </div>
@@ -648,6 +767,7 @@ const Dashboard = () => {
             ))}
           </div>
         </div>
+
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
             <div>
@@ -671,9 +791,17 @@ const Dashboard = () => {
                 <div key={item.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-medium">{item.title}</h3>
-                    <span className="text-lg font-semibold">
-                      {currency.symbol}{item.price}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-semibold">
+                        {currency.symbol}{item.price}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteWishlistItem(item.id)}
+                        className="text-red-500 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-sm text-gray-500 mb-2">
                     Added: {new Date(item.added_date).toLocaleDateString()}
@@ -688,6 +816,24 @@ const Dashboard = () => {
                       Reflection: {item.reflection}
                     </p>
                   )}
+                  {canBuyNow && !item.reviewed && (
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        onClick={() => handleWishlistReview(item, true)}
+                        variant="primary"
+                        className="text-sm"
+                      >
+                        Yes, I want to buy
+                      </Button>
+                      <Button
+                        onClick={() => handleWishlistReview(item, false)}
+                        variant="outline"
+                        className="text-sm"
+                      >
+                        No, remove item
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -695,46 +841,22 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Achievements */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">Achievements</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {badges.map((badge) => {
-            const achievement = achievements.find(a => a.badge_id === badge.id);
-            return (
-              <div
-                key={badge.id}
-                className={`p-4 rounded-lg border ${
-                  achievement ? 'border-yellow bg-yellow/10' : 'border-gray-200'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <badge.icon className={`w-6 h-6 ${
-                    achievement ? 'text-yellow' : 'text-gray-400'
-                  }`} />
-                  {achievement && !achievement.shared && (
-                    <button
-                      onClick={() => shareAchievement(achievement)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <h3 className="font-medium mt-2">{badge.title}</h3>
-                <p className="text-sm text-gray-600">{badge.description}</p>
-                {achievement && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Unlocked: {new Date(achievement.unlocked_at).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            );
-          })}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold">Leaderboard</h2>
+          <Crown className="w-6 h-6 text-yellow" />
+        </div>
+        <div className="flex flex-col items-center justify-center h-48">
+          <img
+            src="https://images.pexels.com/photos/7376/startup-photos.jpg?auto=compress&cs=tinysrgb&w=800"
+            alt="Coming Soon"
+            className="w-32 h-32 object-cover rounded-lg mb-4 opacity-50"
+          />
+          <p className="text-gray-500 font-medium">Coming Soon!</p>
+          <p className="text-sm text-gray-400">Compete with friends and earn rewards</p>
         </div>
       </div>
 
-      {/* Add Goal Modal */}
       {showAddGoalModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -751,7 +873,8 @@ const Dashboard = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Target Amount ({currency.symbol})</label>
+                <label className="block text-sm font-medium mb-1">Target Amount ({currency.symbol})
+                </label>
                 <input
                   type="number"
                   value={newGoal.target_amount}
@@ -786,7 +909,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Add Wishlist Item Modal */}
       {showAddWishlistModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
