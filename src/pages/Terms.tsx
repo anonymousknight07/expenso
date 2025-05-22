@@ -6,7 +6,7 @@ const Terms: React.FC = () => {
       <h1 className="text-3xl font-bold mb-6">Terms and Conditions</h1>
 
       <div className="space-y-4 text-base leading-relaxed">
-        <p><strong>Effective Date:</strong> xxxxxx</p>
+        <p><strong>Effective Date:</strong> 22-05-2025</p>
 
         <p>Welcome to <strong>Expenso</strong>, your smart companion for managing expenses, tracking income, setting budgets, and boosting your financial wellness through insightful analytics and unique features. These Terms and Conditions ("Terms") govern your use of the Expenso web and mobile application ("Service", "App").</p>
 

@@ -6,7 +6,7 @@ const PrivacyPolicy: React.FC = () => {
       <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
 
       <div className="space-y-4 text-base leading-relaxed">
-        <p><strong>Effective Date:</strong> xxxxxx</p>
+        <p><strong>Effective Date:</strong> 22-05-2025</p>
 
         <p>
           At <strong>Expenso</strong>, your privacy is important to us. This Privacy Policy outlines the types of information we collect, how we use and protect it, and the choices you have in relation to your personal data.

@@ -11,6 +11,8 @@ import Layout from './components/layout/Layout';
 import Terms from './pages/Terms';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import { CurrencyProvider } from './contexts/CurrencyContext';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
           <Route path="/reports" element={<Layout><Reports /></Layout>} />
           <Route path="/privacy" element={<Layout><PrivacyPolicy /></Layout>} />
           <Route path="/login" element={<Login />} />
+          <Route path='/forgotPassword' element={<ForgotPassword/>}/>
+          <Route path='reset-password' element={<ResetPassword/>}/>
           <Route path="/register" element={<Register />} />
         </Routes>
       </Router>

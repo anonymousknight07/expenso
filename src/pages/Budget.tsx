@@ -66,7 +66,6 @@ const Budget = () => {
     fetchAlerts();
     updateEffectiveIncome();
 
-    // Set up a subscription to listen for changes to the expenses table
     const expensesChannel = supabase
       .channel('expenses_channel')
       .on('postgres_changes', { 
@@ -75,12 +74,10 @@ const Budget = () => {
         table: 'expenses' 
       }, (payload) => {
         console.log('Expense changed:', payload);
-        // When expenses change, update the budgets to reflect new spending
         fetchBudgetsWithSpent();
       })
       .subscribe();
 
-    // Also listen for changes to the budgets table itself
     const budgetsChannel = supabase
       .channel('budgets_channel')
       .on('postgres_changes', {
@@ -93,28 +90,24 @@ const Budget = () => {
       })
       .subscribe();
 
-    // Force initial fetch with a small delay to ensure everything is loaded
     const initialFetchTimer = setTimeout(() => {
       console.log("Performing initial forced fetch");
       fetchBudgetsWithSpent();
     }, 1000);
 
     return () => {
-      // Clean up subscriptions when component unmounts
       supabase.removeChannel(expensesChannel);
       supabase.removeChannel(budgetsChannel);
       clearTimeout(initialFetchTimer);
     };
   }, []);
 
-  // Check for budgets that need alerts after data is loaded
   useEffect(() => {
     if (budgets.length > 0) {
       checkBudgetAlerts();
     }
   }, [budgets]);
 
-  // This improved function fetches budgets AND calculates the actual spent amount
   const fetchBudgetsWithSpent = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -126,7 +119,6 @@ const Budget = () => {
     
     console.log("Fetching budgets and expenses for date range:", startDate, "to", endDate);
 
-    // First, get all the budgets
     const { data: budgetsData, error: budgetsError } = await supabase
       .from('budgets')
       .select(`
@@ -134,7 +126,6 @@ const Budget = () => {
         category:expense_categories(*)
       `)
       .eq('user_id', user.id);
-      // Note: Removed the .eq('month', startDate) - budgets month format might be different
 
     if (budgetsError) {
       console.error('Error fetching budgets:', budgetsError);
@@ -148,16 +139,13 @@ const Budget = () => {
       return;
     }
 
-    // Filter budgets for the current month client-side to handle potential date format issues
     const currentMonthBudgets = budgetsData.filter(budget => {
-      // Extract YYYY-MM from the budget month regardless of the full format
       const budgetMonth = budget.month.substring(0, 7);
       return budgetMonth === currentMonth;
     });
 
     console.log("Current month budgets:", currentMonthBudgets);
 
-    // Now get all expenses for this month
     const { data: expensesData, error: expensesError } = await supabase
       .from('expenses')
       .select('*')
@@ -172,7 +160,6 @@ const Budget = () => {
 
     console.log("Fetched expenses for date range:", expensesData);
 
-    // Calculate spent amount for each budget
     const updatedBudgets = currentMonthBudgets.map(budget => {
       const categoryExpenses = expensesData?.filter(expense => 
         expense.category_id === budget.category_id
@@ -196,7 +183,6 @@ const Budget = () => {
   };
 
   const fetchBudgets = async () => {
-    // Replace with the improved function
     fetchBudgetsWithSpent();
   };
 
@@ -244,14 +230,12 @@ const Budget = () => {
     
     if (!user) return;
 
-    // Check each budget for threshold or exceeded condition
     for (const budget of budgets) {
       const spendRatio = budget.spent / budget.amount;
       const isExceeded = spendRatio > 1;
       const isApproaching = spendRatio >= budget.notification_threshold && spendRatio <= 1;
       
       if (isExceeded || isApproaching) {
-        // Check if an alert already exists for this condition
         const alertType = isExceeded ? 'exceeded' : 'approaching';
         
         const { data: existingAlerts } = await supabase
@@ -261,7 +245,6 @@ const Budget = () => {
           .eq('type', alertType)
           .eq('acknowledged', false);
         
-        // If no alert exists, create one
         if (!existingAlerts || existingAlerts.length === 0) {
           const { error } = await supabase
             .from('budget_alerts')
@@ -275,13 +258,11 @@ const Budget = () => {
           if (error) {
             console.error('Error creating budget alert:', error);
           } else {
-            // Show a toast notification
             toast.error(
               `${isExceeded ? 'Budget exceeded' : 'Approaching budget limit'}: ${budget.category.name}`, 
               { duration: 5000 }
             );
             
-            // Refresh alerts
             fetchAlerts();
           }
         }
@@ -300,7 +281,6 @@ const Budget = () => {
       return;
     }
 
-    // Remove from local state
     setAlerts(alerts.filter(alert => alert.id !== alertId));
   };
 
@@ -320,7 +300,6 @@ const Budget = () => {
       return;
     }
 
-    // Clear local state
     setAlerts([]);
     setShowAlerts(false);
   };
@@ -437,7 +416,6 @@ const Budget = () => {
     const budget = budgets.find(budget => budget.id === alertBudgetId);
     if (!budget) return null;
     
-    // Ensure budget has category property
     if (!budget.category) {
       const category = categories.find(cat => cat.id === budget.category_id);
       if (category) {
@@ -479,7 +457,6 @@ const Budget = () => {
                 )}
               </Button>
               
-              {/* Alerts Dropdown */}
               {showAlerts && alerts.length > 0 && (
                 <div className="absolute right-0 mt-2 w-64 md:w-80 bg-white rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                   <div className="p-3 border-b flex justify-between items-center">
@@ -584,7 +561,6 @@ const Budget = () => {
         </div>
       </div>
 
-      {/* Add Budget Modal */}
       {isAddingBudget && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
@@ -662,7 +638,6 @@ const Budget = () => {
         </div>
       )}
 
-      {/* Budgets List */}
       <div className="space-y-4">
         {budgets.map(budget => (
           <div key={budget.id} className="bg-white rounded-lg shadow p-4">
@@ -686,26 +661,6 @@ const Budget = () => {
                     {currency.symbol}{budget.amount.toFixed(2)}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className={`h-2.5 rounded-full transition-all duration-300 ${
-                      budget.spent > budget.amount 
-                        ? 'bg-red-500' 
-                        : budget.spent >= budget.amount * budget.notification_threshold 
-                          ? 'bg-yellow-500'
-                          : 'bg-green-500'
-                    }`}
-                    style={{ 
-                      width: `${Math.min((budget.spent / budget.amount) * 100, 100)}%`,
-                      transition: 'width 0.3s ease-in-out'
-                    }}
-                  ></div>
-                </div>
-                <div className="flex justify-between mt-2 text-sm text-gray-600">
-                  <span>Spent: {currency.symbol}{budget.spent.toFixed(2)}</span>
-                  <span>Remaining: {currency.symbol}{Math.max(budget.amount - budget.spent, 0).toFixed(2)}</span>
-                  <span>{((budget.spent / budget.amount) * 100).toFixed(1)}%</span>
-                </div>
               </div>
               <button
                 onClick={() => handleDeleteBudget(budget.id)}
@@ -728,4 +683,3 @@ const Budget = () => {
 };
 
 export default Budget;
-

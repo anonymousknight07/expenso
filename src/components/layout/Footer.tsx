@@ -31,13 +31,13 @@ const Footer = () => {
           </div>
           
           <div>
-            <h3 className="text-lg font-semibold mb-4">Features</h3>
+            {/* <h3 className="text-lg font-semibold mb-4">Features</h3>
             <ul className="space-y-2">
               <li><Link to="/expenses" className="text-gray-300 hover:text-yellow transition-colors">Expense Tracking</Link></li>
               <li><Link to="/income" className="text-gray-300 hover:text-yellow transition-colors">Income Management</Link></li>
               <li><Link to="/budget" className="text-gray-300 hover:text-yellow transition-colors">Budget Planning</Link></li>
               <li><Link to="/reports" className="text-gray-300 hover:text-yellow transition-colors">Reports & Analytics</Link></li>
-            </ul>
+            </ul> */}
           </div>
           
           <div>

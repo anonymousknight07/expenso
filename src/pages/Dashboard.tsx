@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCurrency } from '../contexts/CurrencyContext';
+
 import { Camera, Trophy, Star, Brain, Heart, ThumbsUp, Target, Plus, Share2, Crown, Trash2, X } from 'lucide-react';
 import Button from '../components/common/Button';
 import { Pie, Bar } from 'react-chartjs-2';
@@ -68,13 +69,18 @@ interface Achievement {
 
 const Dashboard = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [dailyExpenses, setDailyExpenses] = useState<any[]>([]);
   const [categoryExpenses, setCategoryExpenses] = useState<any[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+  const [selectedAvatarCategory, setSelectedAvatarCategory] = useState('charater');
+
+
+
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [showAddWishlistModal, setShowAddWishlistModal] = useState(false);
@@ -102,14 +108,78 @@ const Dashboard = () => {
     { id: 'goal_setter', icon: Target, title: 'Goal Setter', description: 'Created your first financial goal' },
   ];
 
+const Chara=[
+ 'https://cdn.sanity.io/images/rh8hx4sn/production/4f5b7078f0f8815586be2a046e5a372546f95ffc-1024x1024.png',
+ 'https://cdn.sanity.io/images/rh8hx4sn/production/04fc1360172498ebf4d4f70e9ae1c97df820203c-1024x1024.png',
+];
+
+
+const Scene=[
+  'https://cdn.sanity.io/images/rh8hx4sn/production/7d833e1a376996e9990bee29c23f4fa302535a59-183x275.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/6da2a15ccb2cf6345248e24d6786f291ef31e832-168x300.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/042eb85967b1cf069617546795fc317e905d7a88-850x531.webp',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/2b30c8a592fcf5ef0884f698bbba205573428e7f-347x540.jpg',
+];
+
+
+const Heroes = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/9ac7ff586aa851056da1fefe114d55f8cbe5c05f-1024x576.webp',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/10786e8bfb6abd9c391dacdfa1768acee0020088-640x480.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/f6bfcd3d66568ed63b9c88fa3476d1767737d747-206x245.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/a60b37cb08820d222ecaf90ca1532837818d3a16-900x450.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/d0a8957923fb8c33900bd30118ed8053849e5c5c-900x450.jpg',
+
+];
+
+const series = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/5c76b1d0aa2ea83496b7feae26c72b29cab8daf9-183x275.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/cf2e7f76ce751f0607c61f77e71f81f93654eb52-564x789.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/7c5cc5a54c5db2f25beea9ad630947a6e045f171-1280x720.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/50bd70094b674c47a0674bb82f5af4fef85277f0-225x225.jpg',
+  
+];
+
+const quotes = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/91b3720ae25ced37f1317d7bd61f39e7303f70d3-800x800.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/76108ec155e52fa810670860b1b74a3a807014eb-183x275.png',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/63e5c7fb3663b86881f5e0e45c6661cdce7446e2-225x225.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/2b44e76fa17201b11c28f93a8dbbe788d260915a-1200x1003.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/28eb7dc4e4bdb10adf6e11c0421fbab2a460c0d3-1200x1200.jpg',
+  
+];
+
+const anime = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/b4bbc9c2f97ffda393a6a85012bc88bb00dc995b-554x554.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/cb215e32efcb6393773e40328b2d8b4f5875b802-6860x5144.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/ed2f0ce1bbfc4601e61b13a5cdb9f8377a825ed6-1000x1000.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/2da13bb38ef1859b7d082cf17f6c931f7621263a-900x1600.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/d0075dd35eda4eb06aba6ed3dd9b8d9cdc7cb944-236x236.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/eb0999f5db0141e3a6920709958ddb0fdc420333-1024x1024.jpg'
+];
+
+const avatarCategories = {
+  charater:{name:'Character', avatars: Chara},
+  scene: {name :'Scene' , avatars: Scene },
+  professional: { name: 'Heroes', avatars: Heroes },
+  diverse: { name: 'Series', avatars: series },
+  illustrated: { name: 'Quotes', avatars: quotes },
+  generated: { name: 'Anime', avatars: anime }
+};
+
+
 useEffect(() => {
   fetchProfile();
   fetchFinancialData();
   fetchGoals();
   fetchWishlist();
-  fetchAchievements();
-  checkNewAchievements();
   
+  
+  const initializeAchievements = async () => {
+    await fetchAchievements();
+    await checkNewAchievements();
+  };
+  
+  initializeAchievements();
   trackUserActivity('dashboard_visit');
 }, []);
 
@@ -131,6 +201,10 @@ useEffect(() => {
     if (data) {
       setProfile(data);
     }
+    if (!data.avatar_url) {
+  setShowAvatarModal(true);
+}
+
   };
 
   const fetchFinancialData = async () => {
@@ -141,7 +215,7 @@ useEffect(() => {
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
 
-    // Fetch income
+   
     const { data: incomeData } = await supabase
       .from('income')
       .select('amount, in_hand_amount')
@@ -154,7 +228,7 @@ useEffect(() => {
     );
     setTotalIncome(monthlyIncome);
 
-    // Fetch expenses with categories
+   
     const { data: expensesData } = await supabase
       .from('expenses')
       .select(`
@@ -175,7 +249,7 @@ useEffect(() => {
       const totalExp = expensesData.reduce((sum, exp) => sum + exp.amount, 0);
       setTotalExpenses(totalExp);
 
-      // Process daily expenses
+  
       const dailyExp = expensesData.reduce((acc, exp) => {
         const date = new Date(exp.date).toLocaleDateString();
         acc[date] = (acc[date] || 0) + exp.amount;
@@ -183,7 +257,7 @@ useEffect(() => {
       }, {});
       setDailyExpenses(Object.entries(dailyExp).map(([date, amount]) => ({ date, amount })));
 
-      // Process category expenses
+    
       const categoryExp = expensesData.reduce((acc, exp) => {
         const category = exp.expense_category_mappings[0].expense_categories.name;
         acc[category] = (acc[category] || 0) + exp.amount;
@@ -211,21 +285,32 @@ useEffect(() => {
   };
 
   const fetchWishlist = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-    const { data, error } = await supabase
-      .from('wishlist')
-      .select('*')
-      .eq('user_id', user.id);
+  const { data, error } = await supabase
+    .from('wishlist')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('added_date', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching wishlist:', error);
-      return;
-    }
+  if (error) {
+    console.error('Error fetching wishlist:', error);
+    return;
+  }
 
-    setWishlistItems(data || []);
-  };
+ 
+  const formattedData = (data || []).map(item => ({
+    ...item,
+    
+    added_date: item.added_date || new Date().toISOString(),
+    can_buy_date: item.can_buy_date || new Date(new Date().getTime() + 48 * 60 * 60 * 1000).toISOString(),
+    reviewed: !!item.reviewed
+  }));
+
+  setWishlistItems(formattedData);
+};
+
 
   const fetchAchievements = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -275,7 +360,6 @@ useEffect(() => {
       return;
     }
 
-    // Update local state
     setProfile(prev => ({
       ...prev,
       xp: newXP,
@@ -284,147 +368,163 @@ useEffect(() => {
   };
 
   const trackUserActivity = async (activityType) => {
-    const xpRewards = {
-      'login': 5,
-      'achievement': 20,
-      'goal_created': 10,
-      'goal_completed': 30,
-      'wishlist_added': 5,
-      'budget_planned': 15,
-      'dashboard_visit': 2
-    };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-    const xpToAdd = xpRewards[activityType] || 0;
-    if (xpToAdd > 0) {
-      await updateXPAndLevel(xpToAdd);
-    }
+  const { data: profileData, error } = await supabase
+    .from('profiles')
+    .select('xp, level, last_active')
+    .eq('id', user.id)
+    .single();
+
+  if (error || !profileData) return;
+
+  const xpRewards = {
+    'login': 5,
+    'achievement': 20,
+    'goal_created': 10,
+    'goal_completed': 30,
+    'wishlist_added': 5,
+    'budget_planned': 15,
+    'dashboard_visit': 2
   };
 
-  const checkNewAchievements = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const xpToAdd = xpRewards[activityType] || 0;
 
-    const { data: newAchievements, error } = await supabase
-      .from('achievements')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('notified', false)
-      .maybeSingle();
+  // Check for daily XP only for login/dashboard related XP
+  const today = new Date().toDateString();
+  const lastActive = profileData.last_active
+    ? new Date(profileData.last_active).toDateString()
+    : null;
 
-    if (error) {
-      console.error('Error fetching achievements:', error);
-      return;
+  const shouldUpdateXP = 
+    (activityType !== 'dashboard_visit' && activityType !== 'login') || today !== lastActive;
+
+  if (xpToAdd > 0 && shouldUpdateXP) {
+    await updateXPAndLevel(xpToAdd);
+
+    // Update last_active date only if this is a daily login-based XP
+    if (activityType === 'dashboard_visit' || activityType === 'login') {
+      await supabase
+        .from('profiles')
+        .update({ last_active: new Date().toISOString() })
+        .eq('id', user.id);
     }
+  }
+};
 
-    if (newAchievements) {
-      const badge = badges.find(b => b.id === newAchievements.badge_id);
-      if (badge) {
-        setNewBadge(badge.title);
-        setShowBadgeNotification(true);
 
-        await supabase
-          .from('achievements')
-          .update({ notified: true })
-          .eq('id', newAchievements.id);
-          
-        // Award XP for achievement
-        trackUserActivity('achievement');
-      }
-    }
-  };
+ const checkNewAchievements = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-  const handleAddGoal = async (e: React.FormEvent) => {
-    e.preventDefault();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const { data: newAchievements, error } = await supabase
+    .from('achievements')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('notified', false);
 
-    const { error } = await supabase
-      .from('goals')
-      .insert([{
-        user_id: user.id,
-        title: newGoal.title,
-        target_amount: parseFloat(newGoal.target_amount),
-        deadline: newGoal.deadline,
-        completed: false,
-        current_amount: 0
-      }]);
+  if (error) {
+    console.error('Error fetching achievements:', error);
+    return;
+  }
 
-    if (error) {
-      console.error('Error adding goal:', error);
-      return;
-    }
-
-    setNewGoal({ title: '', target_amount: '', deadline: '' });
-    setShowAddGoalModal(false);
-    fetchGoals();
+  
+  if (newAchievements && newAchievements.length > 0) {
+    const achievement = newAchievements[0];
+    const badge = badges.find(b => b.id === achievement.badge_id);
     
-    // Award XP for creating a goal
-    trackUserActivity('goal_created');
+    if (badge) {
+      setNewBadge(badge.title);
+      setShowBadgeNotification(true);
 
-    if (!achievements.some(a => a.badge_id === 'goal_setter')) {
+     
       await supabase
         .from('achievements')
-        .insert([{
-          user_id: user.id,
-          badge_id: 'goal_setter',
-        }]);
-      fetchAchievements();
+        .update({ notified: true })
+        .eq('id', achievement.id);
+        
       
       trackUserActivity('achievement');
     }
-  };
+  }
+};
+
+const handleAddGoal = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+
+  const { data: existingGoals, error: fetchError } = await supabase
+    .from('goals')
+    .select('id')
+    .eq('user_id', user.id);
+
+  if (fetchError) {
+    console.error('Error checking existing goals:', fetchError);
+    return;
+  }
+
+  const isFirstGoal = existingGoals.length === 0;
+
+
+  const { error } = await supabase
+    .from('goals')
+    .insert([{
+      user_id: user.id,
+      title: newGoal.title,
+      target_amount: parseFloat(newGoal.target_amount),
+      deadline: newGoal.deadline,
+      completed: false,
+      current_amount: 0
+    }]);
+
+  if (error) {
+    console.error('Error adding goal:', error);
+    return;
+  }
+
+
+  setNewGoal({ title: '', target_amount: '', deadline: '' });
+  setShowAddGoalModal(false);
+  fetchGoals();
+
+  trackUserActivity('goal_created');
+
+ 
+  if (isFirstGoal) {
+    awardAchievement('goal_setter');
+  }
+};
+
 
  const handleGoalCompletion = async (goal: Goal) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-    const { error } = await supabase
-      .from('goals')
-      .update({ 
-        completed: true,
-        current_amount: goal.target_amount 
-      })
-      .eq('id', goal.id);
+  const { error } = await supabase
+    .from('goals')
+    .update({ 
+      completed: true,
+      current_amount: goal.target_amount 
+    })
+    .eq('id', goal.id);
 
-    if (error) {
-      console.error('Error updating goal:', error);
-      return;
-    }
+  if (error) {
+    console.error('Error updating goal:', error);
+    return;
+  }
 
-    alert(`🎉 Congratulations! You have achieved your goal: ${goal.title}`);
-    fetchGoals();
-    
-    // Award XP for completing a goal
-    trackUserActivity('goal_completed');
-    
-    // Check if user already has savings_champion badge
-    const { data: existingBadge } = await supabase
-      .from('achievements')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('badge_id', 'savings_champion')
-      .maybeSingle();
+  trackUserActivity('goal_completed');
 
-    // If user doesn't have the badge yet, award it
-    if (!existingBadge) {
-      const { error: badgeError } = await supabase
-        .from('achievements')
-        .insert([{
-          user_id: user.id,
-          badge_id: 'savings_champion',
-          notified: false
-        }]);
-
-      if (badgeError) {
-        console.error('Error awarding badge:', badgeError);
-      } else {
-      
-        fetchAchievements();
-        checkNewAchievements();
-      }
-    }
-  };
+  // awardAchievement('savings_champion');
+  
+  alert(`🎉 Congratulations! You have achieved your goal: ${goal.title}`);
+  fetchGoals();
+};
 
   const handleDeleteGoal = async (id: string) => {
     const { error } = await supabase
@@ -440,49 +540,103 @@ useEffect(() => {
     fetchGoals();
   };
 
-  const handleWishlistReview = async (item: WishlistItem, stillWantToBuy: boolean) => {
-    if (stillWantToBuy) {
-      navigate('/expenses');
-    } else {
-      const { error } = await supabase
-        .from('wishlist')
-        .delete()
-        .eq('id', item.id);
+const awardAchievement = async (badgeId) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  
 
-      if (error) {
-        console.error('Error deleting wishlist item:', error);
-        return;
-      }
-    }
-    fetchWishlist();
-  };
+  const { data: existingBadge } = await supabase
+    .from('achievements')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('badge_id', badgeId)
+    .maybeSingle();
 
-  const handleAddWishlistItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('wishlist')
+  if (!existingBadge) {
+    const { error: badgeError } = await supabase
+      .from('achievements')
       .insert([{
         user_id: user.id,
-        title: newWishlistItem.title,
-        price: parseFloat(newWishlistItem.price),
-        reflection: newWishlistItem.reflection,
+        badge_id: badgeId,
+        unlocked_at: new Date().toISOString(),
+        notified: false,
+        shared: false
       }]);
 
-    if (error) {
-      console.error('Error adding wishlist item:', error);
-      return;
+    if (badgeError) {
+      console.error('Error awarding badge:', badgeError);
+    } else {
+   
+      fetchAchievements();
+      checkNewAchievements();
     }
+  }
+};
 
-    setNewWishlistItem({ title: '', price: '', reflection: '' });
-    setShowAddWishlistModal(false);
-    fetchWishlist();
-    
-    trackUserActivity('wishlist_added');
-  };
+const handleWishlistReview = async (item: WishlistItem, stillWantToBuy: boolean) => {
+  if (stillWantToBuy) {
+    // If user still wants to buy, mark as reviewed but keep in wishlist
+    const { error } = await supabase
+      .from('wishlist')
+      .update({ reviewed: true })
+      .eq('id', item.id);
+      
+    if (error) {
+      console.error('Error updating wishlist item:', error);
+    } else {
+      // Redirect to expenses page to record the purchase
+      navigate('/expenses');
+    }
+  } else {
+   
+    const { error } = await supabase
+      .from('wishlist')
+      .delete()
+      .eq('id', item.id);
+
+    if (error) {
+      console.error('Error deleting wishlist item:', error);
+    }
+  }
+  
+ 
+  fetchWishlist();
+};
+
+  const handleAddWishlistItem = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+ 
+  const now = new Date();
+  const canBuyDate = new Date(now.getTime() + 48 * 60 * 60 * 1000); 
+
+  const { error } = await supabase
+    .from('wishlist')
+    .insert([{
+      user_id: user.id,
+      title: newWishlistItem.title,
+      price: parseFloat(newWishlistItem.price),
+      reflection: newWishlistItem.reflection,
+      added_date: now.toISOString(),
+      can_buy_date: canBuyDate.toISOString(),
+      reviewed: false
+    }]);
+
+  if (error) {
+    console.error('Error adding wishlist item:', error);
+    return;
+  }
+
+  setNewWishlistItem({ title: '', price: '', reflection: '' });
+  setShowAddWishlistModal(false);
+  fetchWishlist();
+  
+  trackUserActivity('wishlist_added');
+};
+
 
   const handleDeleteWishlistItem = async (id: string) => {
     const { error } = await supabase
@@ -565,60 +719,112 @@ useEffect(() => {
     },
   };
 
-  useEffect(() => {
-    const checkWishlistItems = async () => {
-      const now = new Date();
-      const items = wishlistItems.filter(
-        item => !item.reviewed && new Date(item.can_buy_date) <= now
+useEffect(() => {
+  const checkWishlistItems = async () => {
+    
+    const now = new Date();
+    
+    
+    const readyForReviewItems = wishlistItems.filter(
+      item => !item.reviewed && new Date(item.can_buy_date) <= now
+    );
+    
+    
+    for (const item of readyForReviewItems) {
+     
+      const shouldBuy = window.confirm(
+        `Do you still want to buy "${item.title}"?\nPrice: ${currency.symbol}${item.price}`
       );
 
-      for (const item of items) {
-        const shouldBuy = confirm(
-          `Do you still want to buy "${item.title}"?\nPrice: ${currency.symbol}${item.price}`
-        );
+    
+      await handleWishlistReview(item, shouldBuy);
+    }
+  };
 
-        await handleWishlistReview(item, shouldBuy);
-      }
-    };
-
+  if (wishlistItems.length > 0) {
     checkWishlistItems();
-  }, [wishlistItems]);
+  }
+}, [wishlistItems]);
+
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {showBadgeNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-sm w-full mx-4 text-center">
-            <Trophy className="w-16 h-16 text-yellow mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Achievement Unlocked!</h2>
-            <p className="text-lg mb-4">{newBadge}</p>
+   <div className="container mx-auto px-4 py-8">
+    {showBadgeNotification && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg max-w-sm w-full mx-4 text-center">
+          <Trophy className="w-16 h-16 text-yellow mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Achievement Unlocked!</h2>
+          <p className="text-lg mb-4">{newBadge}</p>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={() => {
+                const achievement = achievements.find(a => a.badge_id === badges.find(b => b.title === newBadge)?.id);
+                if (achievement) shareAchievement(achievement);
+                setShowBadgeNotification(false);
+              }}
+              variant="primary"
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <Share2 className="w-4 h-4" /> Share Achievement
+            </Button>
             <Button
               onClick={() => setShowBadgeNotification(false)}
-              variant="primary"
+              variant="outline"
               className="w-full"
             >
-              Awesome!
+              Close
             </Button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <div className="flex flex-col md:flex-row items-center gap-6">
           <div className="relative">
-            {profile?.avatar_url ? (
-              <img
-                src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}`}
-                alt="Avatar"
-                className="w-24 h-24 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
-                <Camera className="w-8 h-8 text-gray-400" />
-              </div>
-            )}
-          
-          </div>
+  {profile?.avatar_url ? (
+    <img
+      src={profile.avatar_url}
+      alt="Avatar"
+      className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+      onError={(e) => {
+        e.currentTarget.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face';
+      }}
+    />
+  ) : (
+    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
+         onClick={() => setShowAvatarModal(true)}>
+      <Camera className="w-8 h-8 text-gray-400" />
+    </div>
+  )}
+  
+ 
+  <button
+    onClick={() => setShowAvatarModal(true)}
+    className="absolute -bottom-1 -right-1 bg-yellow text-white rounded-full p-1 hover:bg-yellow-600 transition-colors"
+  >
+    <Camera className="w-3 h-3" />
+  </button>
+</div>
+
+
+{selectedAvatar && (
+  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+    <div className="flex items-center gap-3">
+      <img
+        src={selectedAvatar}
+        alt="Selected Avatar Preview"
+        className="w-12 h-12 rounded-full object-cover"
+      />
+      <div>
+        <p className="font-medium">Preview</p>
+        <p className="text-sm text-gray-500">
+          {avatarCategories[selectedAvatarCategory].name} Style
+        </p>
+      </div>
+    </div>
+  </div>
+)}
           <div>
             <h1 className="text-2xl font-bold">
               Welcome, {profile?.first_name || 'User'}!
@@ -784,59 +990,63 @@ useEffect(() => {
             </Button>
           </div>
           <div className="space-y-4">
-            {wishlistItems.map(item => {
-              const canBuyNow = new Date() > new Date(item.can_buy_date);
+           {wishlistItems.map(item => {
+         const canBuyDate = new Date(item.can_buy_date || '');
+         const addedDate = new Date(item.added_date || '');
+         const canBuyNow = new Date() > canBuyDate;
 
               return (
-                <div key={item.id} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium">{item.title}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-semibold">
-                        {currency.symbol}{item.price}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteWishlistItem(item.id)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500 mb-2">
-                    Added: {new Date(item.added_date).toLocaleDateString()}
-                  </div>
-                  {!canBuyNow && (
-                    <div className="text-sm text-yellow">
-                      Can buy after: {new Date(item.can_buy_date).toLocaleDateString()}
-                    </div>
-                  )}
-                  {item.reflection && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      Reflection: {item.reflection}
-                    </p>
-                  )}
-                  {canBuyNow && !item.reviewed && (
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        onClick={() => handleWishlistReview(item, true)}
-                        variant="primary"
-                        className="text-sm"
-                      >
-                        Yes, I want to buy
-                      </Button>
-                      <Button
-                        onClick={() => handleWishlistReview(item, false)}
-                        variant="outline"
-                        className="text-sm"
-                      >
-                        No, remove item
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                 <div key={item.id} className="border rounded-lg p-4">
+      <div className="flex justify-between items-start mb-2">
+        <h3 className="font-medium">{item.title}</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-semibold">
+            {currency.symbol}{item.price}
+          </span>
+          {canBuyNow && (
+            <button
+              onClick={() => handleDeleteWishlistItem(item.id)}
+              className="text-red-500 hover:text-red-600"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="text-sm text-gray-500 mb-2">
+        Added: {addedDate.toLocaleDateString()}
+      </div>
+      {!canBuyNow && (
+        <div className="text-sm text-yellow">
+          Cooling period ends: {canBuyDate.toLocaleDateString()} at {canBuyDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </div>
+      )}
+      {item.reflection && (
+        <p className="text-sm text-gray-600 mt-2">
+          Reflection: {item.reflection}
+        </p>
+      )}
+      {canBuyNow && !item.reviewed && (
+        <div className="mt-3 flex gap-2">
+          <Button
+            onClick={() => handleWishlistReview(item, true)}
+            variant="primary"
+            className="text-sm"
+          >
+            Yes, I want to buy
+          </Button>
+          <Button
+            onClick={() => handleWishlistReview(item, false)}
+            variant="outline"
+            className="text-sm"
+          >
+            No, remove item
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+})}
           </div>
         </div>
       </div>
@@ -910,61 +1120,181 @@ useEffect(() => {
       )}
 
       {showAddWishlistModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-semibold mb-4">Add to Wishlist</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Items added to the wishlist have a 48-hour cooling period before purchase.
-              Use this time to reflect on whether you really need this item.
-            </p>
-            <form onSubmit={handleAddWishlistItem} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Item Name</label>
-                <input
-                  type="text"
-                  value={newWishlistItem.title}
-                  onChange={(e) => setNewWishlistItem({ ...newWishlistItem, title: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Price ({currency.symbol})</label>
-                <input
-                  type="number"
-                  value={newWishlistItem.price}
-                  onChange={(e) => setNewWishlistItem({ ...newWishlistItem, price: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Initial Reflection</label>
-                <textarea
-                  value={newWishlistItem.reflection}
-                  onChange={(e) => setNewWishlistItem({ ...newWishlistItem, reflection: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
-                  rows={3}
-                  placeholder="Why do you want this item? How will it improve your life?"
-                ></textarea>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  onClick={() => setShowAddWishlistModal(false)}
-                  variant="outline"
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary">
-                  Add to Wishlist
-                </Button>
-              </div>
-            </form>
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h2 className="text-xl font-semibold mb-4">Add to Wishlist</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Items added to the wishlist have a 48-hour cooling period before purchase.
+        Use this time to reflect on whether you really need this item.
+      </p>
+      <form onSubmit={handleAddWishlistItem} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Item Name</label>
+          <input
+            type="text"
+            value={newWishlistItem.title}
+            onChange={(e) => setNewWishlistItem({ ...newWishlistItem, title: e.target.value })}
+            className="w-full px-3 py-2 border rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Price ({currency.symbol})</label>
+          <input
+            type="number"
+            value={newWishlistItem.price}
+            onChange={(e) => setNewWishlistItem({ ...newWishlistItem, price: e.target.value })}
+            className="w-full px-3 py-2 border rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Initial Reflection</label>
+          <textarea
+            value={newWishlistItem.reflection}
+            onChange={(e) => setNewWishlistItem({ ...newWishlistItem, reflection: e.target.value })}
+            className="w-full px-3 py-2 border rounded"
+            rows={3}
+            placeholder="Why do you want this item? How will it improve your life?"
+          ></textarea>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            onClick={() => setShowAddWishlistModal(false)}
+            variant="outline"
+          >
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary">
+            Add to Wishlist
+          </Button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+{/* 👇 Inserted Avatar Modal Here */}
+{showAvatarModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Choose Your Avatar</h2>
+        <button
+          onClick={() => setShowAvatarModal(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+      
+      {/* Category Tabs */}
+      <div className="flex flex-wrap gap-2 mb-6 border-b">
+        {Object.entries(avatarCategories).map(([key, category]) => (
+          <button
+            key={key}
+            onClick={() => setSelectedAvatarCategory(key)}
+            className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+              selectedAvatarCategory === key
+                ? 'bg-yellow text-white border-b-2 border-yellow'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {category.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Preview Section */}
+      {selectedAvatar && (
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3">
+            <img
+              src={selectedAvatar}
+              alt="Selected Avatar Preview"
+              className="w-12 h-12 rounded-full object-cover"
+            />
+            <div>
+              <p className="font-medium">Preview</p>
+              <p className="text-sm text-gray-500">
+                {avatarCategories[selectedAvatarCategory].name} Style
+              </p>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Avatar Grid */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {avatarCategories[selectedAvatarCategory].avatars.map((avatar, index) => (
+          <div key={index} className="flex flex-col items-center">
+            <img
+              src={avatar}
+              alt={`${avatarCategories[selectedAvatarCategory].name} Avatar ${index + 1}`}
+              className={`w-20 h-20 rounded-full object-cover cursor-pointer border-2 transition-all hover:scale-105 ${
+                selectedAvatar === avatar 
+                  ? 'border-yellow-500 ring-2 ring-yellow-200' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setSelectedAvatar(avatar)}
+              onError={(e) => {
+                console.error('Failed to load avatar:', avatar);
+                e.currentTarget.src = 'https://via.placeholder.com/150x150/cccccc/666666?text=Avatar';
+              }}
+            />
+            <span className="text-xs text-gray-500 mt-1">
+              {avatarCategories[selectedAvatarCategory].name} {index + 1}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-500">
+          Selected: {selectedAvatar ? 'Avatar chosen' : 'No avatar selected'}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              setShowAvatarModal(false);
+              setSelectedAvatar(null);
+            }}
+            variant="outline"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              if (!selectedAvatar || !profile) return;
+              
+              const { error } = await supabase
+                .from('profiles')
+                .update({ avatar_url: selectedAvatar })
+                .eq('id', profile.id);
+                
+              if (!error) {
+                setProfile((prev) => prev && { ...prev, avatar_url: selectedAvatar });
+                setShowAvatarModal(false);
+                setSelectedAvatar(null);
+              } else {
+                console.error('Error updating avatar:', error);
+              }
+            }}
+            disabled={!selectedAvatar}
+            variant="primary"
+          >
+            Save Avatar
+          </Button>
+        </div>
+      </div>
     </div>
-  );
+  </div>
+)}
+
+</div> 
+);
 };
 
 export default Dashboard;
+
