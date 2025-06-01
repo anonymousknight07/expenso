@@ -1,11 +1,20 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { Plus, Trash2, FileSpreadsheet, File as FilePdf, BellOff, Bell } from 'lucide-react';
-import Button from '../components/common/Button';
-import { useCurrency } from '../contexts/CurrencyContext';
-import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import { toast } from 'react-hot-toast';
+import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import {
+  Plus,
+  Trash2,
+  FileSpreadsheet,
+  File as FilePdf,
+  BellOff,
+  Bell,
+  Edit2,
+  X,
+} from "lucide-react";
+import Button from "../components/common/Button";
+import { useCurrency } from "../contexts/CurrencyContext";
+import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
+import { toast } from "react-hot-toast";
 
 interface Budget {
   id: string;
@@ -32,6 +41,14 @@ interface BudgetAlert {
   acknowledged: boolean;
 }
 
+interface MonthlyBudget {
+  id: string;
+  user_id: string;
+  month: string;
+  amount: number;
+  created_at: string;
+}
+
 interface Expense {
   id: string;
   category_id: string;
@@ -46,11 +63,17 @@ const Budget = () => {
   const [isAddingBudget, setIsAddingBudget] = useState(false);
   const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
   const [showAlerts, setShowAlerts] = useState(false);
+  const [monthlyBudget, setMonthlyBudget] = useState<MonthlyBudget | null>(
+    null
+  );
+  const [isSettingMonthlyBudget, setIsSettingMonthlyBudget] = useState(false);
+  const [isEditingMonthlyBudget, setIsEditingMonthlyBudget] = useState(false);
+  const [monthlyBudgetAmount, setMonthlyBudgetAmount] = useState("");
   const { currency, calculateEffectiveIncome } = useCurrency();
 
   const [newBudget, setNewBudget] = useState({
-    category_id: '',
-    amount: '',
+    category_id: "",
+    amount: "",
     month: new Date().toISOString().slice(0, 7),
     notification_threshold: 0.75,
   });
@@ -64,30 +87,55 @@ const Budget = () => {
     fetchBudgets();
     fetchCategories();
     fetchAlerts();
+    fetchMonthlyBudget();
     updateEffectiveIncome();
 
     const expensesChannel = supabase
-      .channel('expenses_channel')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'expenses' 
-      }, (payload) => {
-        console.log('Expense changed:', payload);
-        fetchBudgetsWithSpent();
-      })
+      .channel("expenses_channel")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "expenses",
+        },
+        (payload) => {
+          console.log("Expense changed:", payload);
+          fetchBudgetsWithSpent();
+        }
+      )
       .subscribe();
 
     const budgetsChannel = supabase
-      .channel('budgets_channel')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'budgets'
-      }, (payload) => {
-        console.log('Budget changed:', payload);
-        fetchBudgetsWithSpent();
-      })
+      .channel("budgets_channel")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "budgets",
+        },
+        (payload) => {
+          console.log("Budget changed:", payload);
+          fetchBudgetsWithSpent();
+        }
+      )
+      .subscribe();
+
+    const monthlyBudgetsChannel = supabase
+      .channel("monthly_budgets_channel")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "monthly_budgets",
+        },
+        (payload) => {
+          console.log("Monthly budget changed:", payload);
+          fetchMonthlyBudget();
+        }
+      )
       .subscribe();
 
     const initialFetchTimer = setTimeout(() => {
@@ -98,6 +146,7 @@ const Budget = () => {
     return () => {
       supabase.removeChannel(expensesChannel);
       supabase.removeChannel(budgetsChannel);
+      supabase.removeChannel(monthlyBudgetsChannel);
       clearTimeout(initialFetchTimer);
     };
   }, []);
@@ -105,30 +154,187 @@ const Budget = () => {
   useEffect(() => {
     if (budgets.length > 0) {
       checkBudgetAlerts();
+      checkMonthlyBudgetAlert();
     }
-  }, [budgets]);
+  }, [budgets, monthlyBudget]);
+
+  const fetchMonthlyBudget = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const monthDate = `${currentMonth}-01`;
+
+    const { data, error } = await supabase
+      .from("monthly_budgets")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("month", monthDate)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      console.error("Error fetching monthly budget:", error);
+      return;
+    }
+
+    setMonthlyBudget(data);
+  };
+
+  const checkMonthlyBudgetAlert = async () => {
+    if (!monthlyBudget) return;
+
+    const totalCategoryBudgets = calculateTotalBudget();
+
+    if (totalCategoryBudgets > monthlyBudget.amount) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check if alert already exists
+      const { data: existingAlerts } = await supabase
+        .from("budget_alerts")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("type", "monthly_exceeded")
+        .eq("acknowledged", false);
+
+      if (!existingAlerts || existingAlerts.length === 0) {
+        const { error } = await supabase.from("budget_alerts").insert([
+          {
+            user_id: user.id,
+            budget_id: monthlyBudget.id,
+            type: "monthly_exceeded",
+            acknowledged: false,
+          },
+        ]);
+
+        if (error) {
+          console.error("Error creating monthly budget alert:", error);
+        } else {
+          toast.error(
+            `Category budgets exceed monthly budget by ${currency.symbol}${(
+              totalCategoryBudgets - monthlyBudget.amount
+            ).toFixed(2)}`,
+            { duration: 6000 }
+          );
+          fetchAlerts();
+        }
+      }
+    }
+  };
+
+  const handleSetMonthlyBudget = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const monthDate = `${currentMonth}-01`;
+
+    const { error } = await supabase.from("monthly_budgets").insert([
+      {
+        user_id: user.id,
+        month: monthDate,
+        amount: parseFloat(monthlyBudgetAmount),
+      },
+    ]);
+
+    if (error) {
+      console.error("Error setting monthly budget:", error);
+      toast.error("Error setting monthly budget");
+      return;
+    }
+
+    setMonthlyBudgetAmount("");
+    setIsSettingMonthlyBudget(false);
+    fetchMonthlyBudget();
+    toast.success("Monthly budget set successfully");
+  };
+
+  const handleUpdateMonthlyBudget = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!monthlyBudget) return;
+
+    const { error } = await supabase
+      .from("monthly_budgets")
+      .update({ amount: parseFloat(monthlyBudgetAmount) })
+      .eq("id", monthlyBudget.id);
+
+    if (error) {
+      console.error("Error updating monthly budget:", error);
+      toast.error("Error updating monthly budget");
+      return;
+    }
+
+    setMonthlyBudgetAmount("");
+    setIsEditingMonthlyBudget(false);
+    fetchMonthlyBudget();
+    toast.success("Monthly budget updated successfully");
+  };
+
+  const handleDeleteMonthlyBudget = async () => {
+    if (!monthlyBudget) return;
+
+    const { error } = await supabase
+      .from("monthly_budgets")
+      .delete()
+      .eq("id", monthlyBudget.id);
+
+    if (error) {
+      console.error("Error deleting monthly budget:", error);
+      toast.error("Error deleting monthly budget");
+      return;
+    }
+
+    setMonthlyBudget(null);
+    toast.success("Monthly budget deleted successfully");
+  };
 
   const fetchBudgetsWithSpent = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) return;
 
     const currentMonth = new Date().toISOString().slice(0, 7);
     const startDate = `${currentMonth}-01`;
-    const endDate = new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() + 1, 0).toISOString().slice(0, 10);
-    
-    console.log("Fetching budgets and expenses for date range:", startDate, "to", endDate);
+    const endDate = new Date(
+      new Date(startDate).getFullYear(),
+      new Date(startDate).getMonth() + 1,
+      0
+    )
+      .toISOString()
+      .slice(0, 10);
+
+    console.log(
+      "Fetching budgets and expenses for date range:",
+      startDate,
+      "to",
+      endDate
+    );
 
     const { data: budgetsData, error: budgetsError } = await supabase
-      .from('budgets')
-      .select(`
+      .from("budgets")
+      .select(
+        `
         *,
         category:expense_categories(*)
-      `)
-      .eq('user_id', user.id);
+      `
+      )
+      .eq("user_id", user.id);
 
     if (budgetsError) {
-      console.error('Error fetching budgets:', budgetsError);
+      console.error("Error fetching budgets:", budgetsError);
       return;
     }
 
@@ -139,7 +345,7 @@ const Budget = () => {
       return;
     }
 
-    const currentMonthBudgets = budgetsData.filter(budget => {
+    const currentMonthBudgets = budgetsData.filter((budget) => {
       const budgetMonth = budget.month.substring(0, 7);
       return budgetMonth === currentMonth;
     });
@@ -147,34 +353,44 @@ const Budget = () => {
     console.log("Current month budgets:", currentMonthBudgets);
 
     const { data: expensesData, error: expensesError } = await supabase
-      .from('expenses')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('date', startDate)
-      .lte('date', endDate);
+      .from("expenses")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("date", startDate)
+      .lte("date", endDate);
 
     if (expensesError) {
-      console.error('Error fetching expenses:', expensesError);
+      console.error("Error fetching expenses:", expensesError);
       return;
     }
 
     console.log("Fetched expenses for date range:", expensesData);
 
-    const updatedBudgets = currentMonthBudgets.map(budget => {
-      const categoryExpenses = expensesData?.filter(expense => 
-        expense.category_id === budget.category_id
-      ) || [];
-      
-      console.log(`Expenses for category ${budget.category.name}:`, categoryExpenses);
-      
-      const spentAmount = categoryExpenses.reduce((total, expense) => 
-        total + (typeof expense.amount === 'number' ? expense.amount : parseFloat(expense.amount)), 0);
-      
+    const updatedBudgets = currentMonthBudgets.map((budget) => {
+      const categoryExpenses =
+        expensesData?.filter(
+          (expense) => expense.category_id === budget.category_id
+        ) || [];
+
+      console.log(
+        `Expenses for category ${budget.category.name}:`,
+        categoryExpenses
+      );
+
+      const spentAmount = categoryExpenses.reduce(
+        (total, expense) =>
+          total +
+          (typeof expense.amount === "number"
+            ? expense.amount
+            : parseFloat(expense.amount)),
+        0
+      );
+
       console.log(`Total spent for ${budget.category.name}:`, spentAmount);
-      
+
       return {
         ...budget,
-        spent: spentAmount
+        spent: spentAmount,
       };
     });
 
@@ -187,18 +403,20 @@ const Budget = () => {
   };
 
   const fetchCategories = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) return;
 
     const { data, error } = await supabase
-      .from('expense_categories')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('name');
+      .from("expense_categories")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("name");
 
     if (error) {
-      console.error('Error fetching categories:', error);
+      console.error("Error fetching categories:", error);
       return;
     }
 
@@ -206,19 +424,21 @@ const Budget = () => {
   };
 
   const fetchAlerts = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) return;
 
     const { data, error } = await supabase
-      .from('budget_alerts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('acknowledged', false)
-      .order('created_at', { ascending: false });
+      .from("budget_alerts")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("acknowledged", false)
+      .order("created_at", { ascending: false });
 
     if (error) {
-      console.error('Error fetching alerts:', error);
+      console.error("Error fetching alerts:", error);
       return;
     }
 
@@ -226,43 +446,48 @@ const Budget = () => {
   };
 
   const checkBudgetAlerts = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) return;
 
     for (const budget of budgets) {
       const spendRatio = budget.spent / budget.amount;
       const isExceeded = spendRatio > 1;
-      const isApproaching = spendRatio >= budget.notification_threshold && spendRatio <= 1;
-      
+      const isApproaching =
+        spendRatio >= budget.notification_threshold && spendRatio <= 1;
+
       if (isExceeded || isApproaching) {
-        const alertType = isExceeded ? 'exceeded' : 'approaching';
-        
+        const alertType = isExceeded ? "exceeded" : "approaching";
+
         const { data: existingAlerts } = await supabase
-          .from('budget_alerts')
-          .select('*')
-          .eq('budget_id', budget.id)
-          .eq('type', alertType)
-          .eq('acknowledged', false);
-        
+          .from("budget_alerts")
+          .select("*")
+          .eq("budget_id", budget.id)
+          .eq("type", alertType)
+          .eq("acknowledged", false);
+
         if (!existingAlerts || existingAlerts.length === 0) {
-          const { error } = await supabase
-            .from('budget_alerts')
-            .insert([{
+          const { error } = await supabase.from("budget_alerts").insert([
+            {
               user_id: user.id,
               budget_id: budget.id,
               type: alertType,
-              acknowledged: false
-            }]);
-          
+              acknowledged: false,
+            },
+          ]);
+
           if (error) {
-            console.error('Error creating budget alert:', error);
+            console.error("Error creating budget alert:", error);
           } else {
             toast.error(
-              `${isExceeded ? 'Budget exceeded' : 'Approaching budget limit'}: ${budget.category.name}`, 
+              `${
+                isExceeded ? "Budget exceeded" : "Approaching budget limit"
+              }: ${budget.category.name}`,
               { duration: 5000 }
             );
-            
+
             fetchAlerts();
           }
         }
@@ -272,31 +497,33 @@ const Budget = () => {
 
   const handleAcknowledgeAlert = async (alertId: string) => {
     const { error } = await supabase
-      .from('budget_alerts')
+      .from("budget_alerts")
       .update({ acknowledged: true })
-      .eq('id', alertId);
+      .eq("id", alertId);
 
     if (error) {
-      console.error('Error acknowledging alert:', error);
+      console.error("Error acknowledging alert:", error);
       return;
     }
 
-    setAlerts(alerts.filter(alert => alert.id !== alertId));
+    setAlerts(alerts.filter((alert) => alert.id !== alertId));
   };
 
   const handleAcknowledgeAllAlerts = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) return;
 
     const { error } = await supabase
-      .from('budget_alerts')
+      .from("budget_alerts")
       .update({ acknowledged: true })
-      .eq('user_id', user.id)
-      .eq('acknowledged', false);
+      .eq("user_id", user.id)
+      .eq("acknowledged", false);
 
     if (error) {
-      console.error('Error acknowledging all alerts:', error);
+      console.error("Error acknowledging all alerts:", error);
       return;
     }
 
@@ -307,31 +534,33 @@ const Budget = () => {
   const handleAddBudget = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) return;
 
     const monthDate = `${newBudget.month}-01`;
 
-    const { error } = await supabase
-      .from('budgets')
-      .insert([{
+    const { error } = await supabase.from("budgets").insert([
+      {
         category_id: newBudget.category_id,
         amount: parseFloat(newBudget.amount),
         month: monthDate,
         notification_threshold: newBudget.notification_threshold,
         spent: 0,
-        user_id: user.id
-      }]);
+        user_id: user.id,
+      },
+    ]);
 
     if (error) {
-      console.error('Error adding budget:', error);
+      console.error("Error adding budget:", error);
       return;
     }
 
     setNewBudget({
-      category_id: '',
-      amount: '',
+      category_id: "",
+      amount: "",
       month: new Date().toISOString().slice(0, 7),
       notification_threshold: 0.75,
     });
@@ -340,13 +569,10 @@ const Budget = () => {
   };
 
   const handleDeleteBudget = async (id: string) => {
-    const { error } = await supabase
-      .from('budgets')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from("budgets").delete().eq("id", id);
 
     if (error) {
-      console.error('Error deleting budget:', error);
+      console.error("Error deleting budget:", error);
       return;
     }
 
@@ -363,69 +589,121 @@ const Budget = () => {
 
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
-    
-    const data = budgets.map(budget => ({
+
+    const data = budgets.map((budget) => ({
       Category: budget.category.name,
-      'Budget Amount': `${currency.symbol}${budget.amount.toFixed(2)}`,
-      'Spent Amount': `${currency.symbol}${budget.spent.toFixed(2)}`,
-      'Remaining': `${currency.symbol}${(budget.amount - budget.spent).toFixed(2)}`,
-      'Progress': `${((budget.spent / budget.amount) * 100).toFixed(1)}%`,
-      'Alert Threshold': `${(budget.notification_threshold * 100).toFixed(0)}%`
+      "Budget Amount": `${currency.symbol}${budget.amount.toFixed(2)}`,
+      "Spent Amount": `${currency.symbol}${budget.spent.toFixed(2)}`,
+      Remaining: `${currency.symbol}${(budget.amount - budget.spent).toFixed(
+        2
+      )}`,
+      Progress: `${((budget.spent / budget.amount) * 100).toFixed(1)}%`,
+      "Alert Threshold": `${(budget.notification_threshold * 100).toFixed(0)}%`,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
-    
-    XLSX.utils.sheet_add_aoa(worksheet, [
-      [`Monthly Income: ${currency.symbol}${effectiveIncome.toFixed(2)}`],
-      [`Total Budget: ${currency.symbol}${calculateTotalBudget().toFixed(2)}`],
-      [`Savings: ${currency.symbol}${calculateSavings().toFixed(2)}`]
-    ], { origin: -1 });
-    
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Budget Report');
-    XLSX.writeFile(workbook, 'Budget.xlsx');
+
+    XLSX.utils.sheet_add_aoa(
+      worksheet,
+      [
+        [`Monthly Income: ${currency.symbol}${effectiveIncome.toFixed(2)}`],
+        [
+          `Monthly Budget: ${currency.symbol}${
+            monthlyBudget?.amount.toFixed(2) || "0.00"
+          }`,
+        ],
+        [
+          `Total Category Budgets: ${
+            currency.symbol
+          }${calculateTotalBudget().toFixed(2)}`,
+        ],
+        [`Savings: ${currency.symbol}${calculateSavings().toFixed(2)}`],
+      ],
+      { origin: -1 }
+    );
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Budget Report");
+    XLSX.writeFile(workbook, "Budget.xlsx");
   };
 
   const exportToPDF = () => {
     const doc = new jsPDF();
-    
+
     doc.setFontSize(20);
-    doc.text('Budget Report', 20, 20);
-    
+    doc.text("Budget Report", 20, 20);
+
     let yPos = 40;
-    
+
     doc.setFontSize(14);
-    doc.text(`Monthly Income: ${currency.symbol}${effectiveIncome.toFixed(2)}`, 20, yPos);
+    doc.text(
+      `Monthly Income: ${currency.symbol}${effectiveIncome.toFixed(2)}`,
+      20,
+      yPos
+    );
     yPos += 10;
-    doc.text(`Total Budget: ${currency.symbol}${calculateTotalBudget().toFixed(2)}`, 20, yPos);
+    doc.text(
+      `Monthly Budget: ${currency.symbol}${
+        monthlyBudget?.amount.toFixed(2) || "0.00"
+      }`,
+      20,
+      yPos
+    );
     yPos += 10;
-    doc.text(`Savings: ${currency.symbol}${calculateSavings().toFixed(2)}`, 20, yPos);
+    doc.text(
+      `Total Category Budgets: ${
+        currency.symbol
+      }${calculateTotalBudget().toFixed(2)}`,
+      20,
+      yPos
+    );
+    yPos += 10;
+    doc.text(
+      `Savings: ${currency.symbol}${calculateSavings().toFixed(2)}`,
+      20,
+      yPos
+    );
     yPos += 20;
 
     doc.setFontSize(12);
-    budgets.forEach(budget => {
+    budgets.forEach((budget) => {
       doc.text(budget.category.name, 20, yPos);
       doc.text(`${currency.symbol}${budget.amount.toFixed(2)}`, 100, yPos);
-      doc.text(`${((budget.spent / budget.amount) * 100).toFixed(1)}%`, 150, yPos);
+      doc.text(
+        `${((budget.spent / budget.amount) * 100).toFixed(1)}%`,
+        150,
+        yPos
+      );
       yPos += 10;
     });
 
-    doc.save('Budget.pdf');
+    doc.save("Budget.pdf");
   };
 
   const getBudgetForAlert = (alertBudgetId: string) => {
-    const budget = budgets.find(budget => budget.id === alertBudgetId);
-    if (!budget) return null;
-    
+    const budget = budgets.find((budget) => budget.id === alertBudgetId);
+    if (!budget) {
+      // Check if it's a monthly budget alert
+      if (monthlyBudget && alertBudgetId === monthlyBudget.id) {
+        return {
+          id: monthlyBudget.id,
+          category: { name: "Monthly Budget" },
+          amount: monthlyBudget.amount,
+          spent: calculateTotalBudget(),
+        };
+      }
+      return null;
+    }
+
     if (!budget.category) {
-      const category = categories.find(cat => cat.id === budget.category_id);
+      const category = categories.find((cat) => cat.id === budget.category_id);
       if (category) {
         return {
           ...budget,
-          category
+          category,
         };
       }
     }
-    
+
     return budget;
   };
 
@@ -433,6 +711,7 @@ const Budget = () => {
     console.log("Manual refresh requested");
     fetchBudgetsWithSpent();
     fetchAlerts();
+    fetchMonthlyBudget();
     toast.success("Budget data refreshed");
   };
 
@@ -448,7 +727,11 @@ const Budget = () => {
                 variant="outline"
                 className="relative"
               >
-                {alerts.length > 0 ? <Bell className="w-5 h-5 mr-2" /> : <BellOff className="w-5 h-5 mr-2" />}
+                {alerts.length > 0 ? (
+                  <Bell className="w-5 h-5 mr-2" />
+                ) : (
+                  <BellOff className="w-5 h-5 mr-2" />
+                )}
                 Alerts
                 {alerts.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
@@ -456,12 +739,12 @@ const Budget = () => {
                   </span>
                 )}
               </Button>
-              
+
               {showAlerts && alerts.length > 0 && (
                 <div className="absolute right-0 mt-2 w-64 md:w-80 bg-white rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                   <div className="p-3 border-b flex justify-between items-center">
                     <h3 className="font-semibold">Budget Alerts</h3>
-                    <button 
+                    <button
                       onClick={handleAcknowledgeAllAlerts}
                       className="text-xs text-blue-600 hover:text-blue-800"
                     >
@@ -469,20 +752,33 @@ const Budget = () => {
                     </button>
                   </div>
                   <div className="p-2">
-                    {alerts.map(alert => {
+                    {alerts.map((alert) => {
                       const budget = getBudgetForAlert(alert.budget_id);
                       if (!budget) return null;
-                      
+
                       return (
-                        <div key={alert.id} className="p-2 border-b last:border-none">
+                        <div
+                          key={alert.id}
+                          className="p-2 border-b last:border-none"
+                        >
                           <div className="flex justify-between">
                             <div>
-                              <p className="font-medium">{budget.category.name}</p>
+                              <p className="font-medium">
+                                {budget.category.name}
+                              </p>
                               <p className="text-sm text-gray-600">
-                                {alert.type === 'exceeded' ? 'Budget exceeded!' : 'Approaching limit'}
+                                {alert.type === "exceeded"
+                                  ? "Budget exceeded!"
+                                  : alert.type === "approaching"
+                                  ? "Approaching limit"
+                                  : alert.type === "monthly_exceeded"
+                                  ? "Category budgets exceed monthly budget!"
+                                  : "Budget alert"}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {currency.symbol}{budget.spent.toFixed(2)} of {currency.symbol}{budget.amount.toFixed(2)}
+                                {currency.symbol}
+                                {budget.spent.toFixed(2)} of {currency.symbol}
+                                {budget.amount.toFixed(2)}
                               </p>
                             </div>
                             <button
@@ -499,12 +795,20 @@ const Budget = () => {
                 </div>
               )}
             </div>
-            
-            <Button
-              onClick={handleManualRefresh}
-              variant="outline"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-5 h-5 mr-2">
+
+            <Button onClick={handleManualRefresh} variant="outline">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5 mr-2"
+              >
                 <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                 <path d="M3 3v5h5"></path>
                 <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
@@ -512,28 +816,98 @@ const Budget = () => {
               </svg>
               Refresh
             </Button>
-            
-            <Button
-              onClick={exportToExcel}
-              variant="outline"
-            >
+
+            <Button onClick={exportToExcel} variant="outline">
               <FileSpreadsheet className="w-5 h-5 mr-2" />
               Export Excel
             </Button>
-            <Button
-              onClick={exportToPDF}
-              variant="outline"
-            >
+            <Button onClick={exportToPDF} variant="outline">
               <FilePdf className="w-5 h-5 mr-2" />
               Export PDF
             </Button>
-            <Button
-              onClick={() => setIsAddingBudget(true)}
-              variant="primary"
-            >
+            <Button onClick={() => setIsAddingBudget(true)} variant="primary">
               <Plus className="w-5 h-5 mr-2" />
               Add Budget
             </Button>
+          </div>
+        </div>
+
+        {/* Monthly Budget Section */}
+        <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-lg shadow p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold mb-2 text-purple-800">
+                Monthly Budget
+              </h2>
+              {monthlyBudget ? (
+                <div className="space-y-2">
+                  <p className="text-3xl font-bold text-purple-600">
+                    {currency.symbol}
+                    {monthlyBudget.amount.toFixed(2)}
+                  </p>
+                  <div className="text-sm text-gray-600">
+                    <p>
+                      Category budgets total: {currency.symbol}
+                      {calculateTotalBudget().toFixed(2)}
+                    </p>
+                    <p
+                      className={`font-medium ${
+                        calculateTotalBudget() > monthlyBudget.amount
+                          ? "text-red-600"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {calculateTotalBudget() > monthlyBudget.amount
+                        ? `Exceeding by ${currency.symbol}${(
+                            calculateTotalBudget() - monthlyBudget.amount
+                          ).toFixed(2)}`
+                        : `Within budget by ${currency.symbol}${(
+                            monthlyBudget.amount - calculateTotalBudget()
+                          ).toFixed(2)}`}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-600">
+                  No monthly budget set for this month
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {monthlyBudget ? (
+                <>
+                  <Button
+                    onClick={() => {
+                      setMonthlyBudgetAmount(monthlyBudget.amount.toString());
+                      setIsEditingMonthlyBudget(true);
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Edit2 className="w-4 h-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    onClick={handleDeleteMonthlyBudget}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => setIsSettingMonthlyBudget(true)}
+                  variant="primary"
+                  size="sm"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Set Monthly Budget
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -541,25 +915,89 @@ const Budget = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-2">Monthly Income</h2>
             <p className="text-3xl font-bold text-green-500">
-              {currency.symbol}{effectiveIncome.toFixed(2)}
+              {currency.symbol}
+              {effectiveIncome.toFixed(2)}
             </p>
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-2">Total Budget</h2>
+            <h2 className="text-xl font-semibold mb-2">
+              Total Category Budgets
+            </h2>
             <p className="text-3xl font-bold text-blue-500">
-              {currency.symbol}{calculateTotalBudget().toFixed(2)}
+              {currency.symbol}
+              {calculateTotalBudget().toFixed(2)}
             </p>
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-2">Savings</h2>
-            <p className={`text-3xl font-bold ${calculateSavings() >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {currency.symbol}{calculateSavings().toFixed(2)}
+            <p
+              className={`text-3xl font-bold ${
+                calculateSavings() >= 0 ? "text-green-500" : "text-red-500"
+              }`}
+            >
+              {currency.symbol}
+              {calculateSavings().toFixed(2)}
             </p>
           </div>
         </div>
       </div>
+
+      {/* Monthly Budget Modal */}
+      {(isSettingMonthlyBudget || isEditingMonthlyBudget) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">
+              {isEditingMonthlyBudget
+                ? "Edit Monthly Budget"
+                : "Set Monthly Budget"}
+            </h2>
+            <form
+              onSubmit={
+                isEditingMonthlyBudget
+                  ? handleUpdateMonthlyBudget
+                  : handleSetMonthlyBudget
+              }
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Monthly Budget Amount ({currency.symbol})
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={monthlyBudgetAmount}
+                  onChange={(e) => setMonthlyBudgetAmount(e.target.value)}
+                  className="w-full px-3 py-2 border rounded"
+                  placeholder="Enter monthly budget amount"
+                  required
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  This is your total budget for the month across all categories
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  onClick={() => {
+                    setIsSettingMonthlyBudget(false);
+                    setIsEditingMonthlyBudget(false);
+                    setMonthlyBudgetAmount("");
+                  }}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary">
+                  {isEditingMonthlyBudget ? "Update Budget" : "Set Budget"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {isAddingBudget && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -567,15 +1005,19 @@ const Budget = () => {
             <h2 className="text-xl font-bold mb-4">Add New Budget</h2>
             <form onSubmit={handleAddBudget} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Category</label>
+                <label className="block text-sm font-medium mb-1">
+                  Category
+                </label>
                 <select
                   value={newBudget.category_id}
-                  onChange={(e) => setNewBudget({...newBudget, category_id: e.target.value})}
+                  onChange={(e) =>
+                    setNewBudget({ ...newBudget, category_id: e.target.value })
+                  }
                   className="w-full px-3 py-2 border rounded"
                   required
                 >
                   <option value="">Select a category</option>
-                  {categories.map(category => (
+                  {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
@@ -584,12 +1026,16 @@ const Budget = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Amount ({currency.symbol})</label>
+                <label className="block text-sm font-medium mb-1">
+                  Amount ({currency.symbol})
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   value={newBudget.amount}
-                  onChange={(e) => setNewBudget({...newBudget, amount: e.target.value})}
+                  onChange={(e) =>
+                    setNewBudget({ ...newBudget, amount: e.target.value })
+                  }
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
@@ -600,25 +1046,35 @@ const Budget = () => {
                 <input
                   type="month"
                   value={newBudget.month}
-                  onChange={(e) => setNewBudget({...newBudget, month: e.target.value})}
+                  onChange={(e) =>
+                    setNewBudget({ ...newBudget, month: e.target.value })
+                  }
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Alert Threshold (%)</label>
+                <label className="block text-sm font-medium mb-1">
+                  Alert Threshold (%)
+                </label>
                 <input
                   type="number"
                   min="1"
                   max="100"
                   value={newBudget.notification_threshold * 100}
-                  onChange={(e) => setNewBudget({...newBudget, notification_threshold: parseInt(e.target.value) / 100})}
+                  onChange={(e) =>
+                    setNewBudget({
+                      ...newBudget,
+                      notification_threshold: parseInt(e.target.value) / 100,
+                    })
+                  }
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  You'll be notified when spending reaches this percentage of your budget
+                  You'll be notified when spending reaches this percentage of
+                  your budget
                 </p>
               </div>
 
@@ -639,7 +1095,7 @@ const Budget = () => {
       )}
 
       <div className="space-y-4">
-        {budgets.map(budget => (
+        {budgets.map((budget) => (
           <div key={budget.id} className="bg-white rounded-lg shadow p-4">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex-1">
@@ -651,14 +1107,45 @@ const Budget = () => {
                         Exceeded
                       </span>
                     )}
-                    {budget.spent >= budget.amount * budget.notification_threshold && budget.spent <= budget.amount && (
-                      <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded">
-                        Approaching Limit
-                      </span>
-                    )}
+                    {budget.spent >=
+                      budget.amount * budget.notification_threshold &&
+                      budget.spent <= budget.amount && (
+                        <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded">
+                          Approaching Limit
+                        </span>
+                      )}
                   </h3>
                   <span className="text-lg font-semibold">
-                    {currency.symbol}{budget.amount.toFixed(2)}
+                    {currency.symbol}
+                    {budget.amount.toFixed(2)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                  <div
+                    className={`h-2 rounded-full ${
+                      budget.spent > budget.amount
+                        ? "bg-red-500"
+                        : budget.spent >=
+                          budget.amount * budget.notification_threshold
+                        ? "bg-yellow-500"
+                        : "bg-green-500"
+                    }`}
+                    style={{
+                      width: `${Math.min(
+                        (budget.spent / budget.amount) * 100,
+                        100
+                      )}%`,
+                    }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>
+                    Spent: {currency.symbol}
+                    {budget.spent.toFixed(2)}
+                  </span>
+                  <span>
+                    Remaining: {currency.symbol}
+                    {Math.max(budget.amount - budget.spent, 0).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -671,10 +1158,13 @@ const Budget = () => {
             </div>
           </div>
         ))}
-        
+
         {budgets.length === 0 && (
           <div className="bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-gray-500">No budgets set for this month. Add your first budget to get started.</p>
+            <p className="text-gray-500">
+              No budgets set for this month. Add your first budget to get
+              started.
+            </p>
           </div>
         )}
       </div>
