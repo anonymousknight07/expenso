@@ -79,7 +79,6 @@ const ChatBot = () => {
         { role: "assistant", content: botResponse },
       ]);
 
-     
       const newSuggestions = [
         "Tell me more about budgeting",
         "How can I improve my savings?",
@@ -102,47 +101,49 @@ const ChatBot = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-0 right-0 sm:bottom-4 sm:right-4 z-50">
       {isOpen ? (
-        <div className="bg-white rounded-lg shadow-xl w-80 sm:w-96 flex flex-col h-[500px]">
-          <div className="p-4 bg-yellow rounded-t-lg flex items-center gap-3">
+        <div className="bg-white flex flex-col h-[100vh] w-full sm:h-[500px] sm:w-[380px] sm:rounded-lg sm:shadow-xl">
+          <div className="p-3 sm:p-4 bg-yellow sm:rounded-t-lg flex items-center gap-2 sm:gap-3">
             <img
               src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
               alt="AI Assistant"
               className="w-8 h-8 rounded-full object-cover border-2 border-black"
             />
             <div className="flex-1">
-              <h3 className="font-semibold text-black">Penny</h3>
+              <h3 className="font-semibold text-black text-sm sm:text-base">
+                Penny
+              </h3>
               <p className="text-xs text-black opacity-75">
                 Always here to help!
               </p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-black hover:text-gray-700"
+              className="text-black hover:text-gray-700 p-1"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
             {messages.length === 0 && (
-              <div className="text-center text-gray-500 py-8">
+              <div className="text-center text-gray-500 py-6 sm:py-8">
                 <img
                   src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
                   alt="Welcome"
-                  className="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-yellow"
+                  className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full border-2 border-yellow"
                 />
-                <p className="font-medium">Hello! 👋</p>
-                <p className="text-sm mt-2">
+                <p className="font-medium text-sm sm:text-base">Hello! 👋</p>
+                <p className="text-xs sm:text-sm mt-2">
                   I'm your financial assistant. Here's what I can help you with:
                 </p>
-                <div className="mt-4 space-y-2">
+                <div className="mt-3 sm:mt-4 space-y-2">
                   {INITIAL_PROMPTS.map((prompt, index) => (
                     <button
                       key={index}
                       onClick={(e) => handleSubmit(e, prompt)}
-                      className="w-full p-2 text-left hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                      className="w-full p-2 text-left hover:bg-gray-100 rounded-lg transition-colors text-xs sm:text-sm"
                     >
                       {prompt}
                     </button>
@@ -166,7 +167,7 @@ const ChatBot = () => {
                   />
                 )}
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
+                  className={`max-w-[85%] rounded-lg p-2.5 sm:p-3 text-sm ${
                     message.role === "user"
                       ? "bg-yellow text-black"
                       : "bg-gray-100 text-black"
@@ -185,16 +186,16 @@ const ChatBot = () => {
             ))}
 
             {messages.length > 0 && !isLoading && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-500 mb-2">
+              <div className="mt-3 sm:mt-4">
+                <p className="text-xs sm:text-sm text-gray-500 mb-2">
                   Suggested questions:
                 </p>
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   {suggestedQuestions.map((question, index) => (
                     <button
                       key={index}
                       onClick={(e) => handleSubmit(e, question)}
-                      className="w-full p-2 text-left hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                      className="w-full p-2 text-left hover:bg-gray-100 rounded-lg transition-colors text-xs sm:text-sm"
                     >
                       {question}
                     </button>
@@ -210,7 +211,7 @@ const ChatBot = () => {
                   alt="Assistant"
                   className="w-6 h-6 rounded-full object-cover"
                 />
-                <div className="bg-gray-100 rounded-lg p-3">
+                <div className="bg-gray-100 rounded-lg p-2.5 sm:p-3">
                   <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
               </div>
@@ -218,19 +219,19 @@ const ChatBot = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSubmit} className="p-4 border-t">
+          <form onSubmit={handleSubmit} className="p-3 sm:p-4 border-t">
             <div className="flex gap-2">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about finances or Expenso..."
-                className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow"
+                className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow"
               />
               <button
                 type="submit"
                 disabled={isLoading}
-                className="bg-yellow text-black px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50"
+                className="bg-yellow text-black px-3 sm:px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50"
               >
                 <Send className="w-5 h-5" />
               </button>
@@ -240,7 +241,7 @@ const ChatBot = () => {
       ) : (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-yellow text-black p-3 rounded-full shadow-lg hover:bg-yellow-600 relative"
+          className="bg-yellow text-black p-3 sm:rounded-full shadow-lg hover:bg-yellow-600 relative"
         >
           <MessageSquare className="w-6 h-6" />
           <img
