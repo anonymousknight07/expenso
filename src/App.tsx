@@ -5,6 +5,7 @@ import Expenses from "./pages/Expenses";
 import Income from "./pages/Income";
 import Budget from "./pages/Budget";
 import Reports from "./pages/Reports";
+import JarSystem from "./pages/JarSystem";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Layout from "./components/layout/Layout";
@@ -73,6 +74,14 @@ function App() {
             element={
               <Layout>
                 <Reports />
+              </Layout>
+            }
+          />
+          <Route
+            path="/jar-system"
+            element={
+              <Layout>
+                <JarSystem />
               </Layout>
             }
           />
