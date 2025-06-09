@@ -19,6 +19,7 @@ import {
   X,
   Smile,
   Frown,
+  Coffee,
   Meh,
 } from "lucide-react";
 import Button from '../components/common/Button';
@@ -167,6 +168,27 @@ const Dashboard = () => {
       label: "Tired",
       emoji: "😴",
       color: "bg-gray-100 text-gray-800",
+    },
+    {
+      id: "Motivated",
+      label: "Motivated",
+      emoji: "💪",
+      icon: Star,
+      color: "bg-red-100 text-red-800",
+    },
+    {
+      id: "Grateful",
+      label: "Grateful",
+      emoji: "🙏",
+      icon: Heart,
+      color: "bg-pink-100 text-pink-800",
+    },
+    {
+      id: "Energetic",
+      label: "Energetic",
+      emoji: "⚡",
+      icon: Coffee,
+      color: "bg-black-100 text-black-800",
     },
   ];
 
@@ -1480,50 +1502,53 @@ useEffect(() => {
           </div>
         </div>
       )}
-
+ 
       {/* Mood Selection Modal */}
-      {showMoodModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">How are you feeling?</h2>
-              <button
-                onClick={() => setShowMoodModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <p className="text-gray-600 mb-6">
-              Tracking your mood helps understand emotional spending patterns
-            </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {moodOptions.map((mood) => (
-                <button
-                  key={mood.id}
-                  onClick={() => logMood(mood.id)}
-                  className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
-                    userMood === mood.id
-                      ? "border-yellow-500 bg-yellow-50"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  <span className="text-3xl mb-2">{mood.emoji}</span>
-                  <span className="font-medium">{mood.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button onClick={() => setShowMoodModal(false)} variant="outline">
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+{showMoodModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">How are you feeling?</h2>
+        <button
+          onClick={() => setShowMoodModal(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+      
+      <p className="text-gray-600 mb-6">
+        Tracking your mood helps understand emotional spending patterns
+      </p>
+      
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {moodOptions.map((mood) => (
+          <button
+            key={mood.id}
+            onClick={() => logMood(mood.id)}
+            className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
+              userMood === mood.id 
+                ? 'border-yellow-500 bg-yellow-50' 
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <span className="text-3xl mb-2">{mood.emoji}</span>
+            <span className="font-medium">{mood.label}</span>
+          </button>
+        ))}
+      </div>
+      
+      <div className="mt-6 flex justify-end">
+        <Button 
+          onClick={() => setShowMoodModal(false)}
+          variant="outline"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
       {showAvatarModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">

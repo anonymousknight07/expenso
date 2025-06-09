@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ChevronDown } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
-import { useCurrency } from '../../contexts/CurrencyContext';
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, ChevronDown } from "lucide-react";
+import { supabase } from "../../lib/supabase";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,10 +22,10 @@ const Navbar = () => {
         setIsMenuOpen(false);
       }
     };
-    
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   useEffect(() => {
@@ -33,7 +33,9 @@ const Navbar = () => {
       setUser(session?.user ?? null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
@@ -43,7 +45,7 @@ const Navbar = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setIsMenuOpen(false);
-    navigate('/');
+    navigate("/");
   };
 
   const toggleMenu = () => {
@@ -57,17 +59,16 @@ const Navbar = () => {
   const getNavItems = () => {
     if (user) {
       return [
-        { name: 'DASHBOARD', path: '/dashboard' },
-        { name: 'EXPENSES', path: '/expenses' },
-        { name: 'INCOME', path: '/income' },
-        { name: 'BUDGET', path: '/budget' },
-        { name: 'JAR SYSTEM', path: '/jar-system' },
-        { name: 'REPORTS', path: '/reports' },
+        { name: "DASHBOARD", path: "/dashboard" },
+        { name: "EXPENSES", path: "/expenses" },
+        { name: "INCOME", path: "/income" },
+        { name: "BUDGET", path: "/budget" },
+        { name: "JAR SYSTEM", path: "/jar-system" },
+        { name: "STOCK MARKET", path: "/stock-market" },
+        { name: "REPORTS", path: "/reports" },
       ];
     }
-    return [
-      { name: 'HOME', path: '/' },
-    ];
+    return [{ name: "HOME", path: "/" }];
   };
 
   const navItems = getNavItems();
@@ -92,9 +93,9 @@ const Navbar = () => {
                 key={item.name}
                 to={item.path}
                 className={`text-xs xl:text-sm font-medium transition-colors relative whitespace-nowrap px-2 py-1 ${
-                  location.pathname === item.path 
-                    ? 'text-black after:content-[""] after:absolute after:-bottom-1 after:left-0 after:w-full after:h-0.5 after:bg-black' 
-                    : 'text-black hover:text-gray-600'
+                  location.pathname === item.path
+                    ? 'text-black after:content-[""] after:absolute after:-bottom-1 after:left-0 after:w-full after:h-0.5 after:bg-black'
+                    : "text-black hover:text-gray-600"
                 }`}
               >
                 {item.name}
@@ -126,7 +127,9 @@ const Navbar = () => {
                         className="block w-full text-left px-4 py-2 text-xs lg:text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                       >
                         <span className="font-medium">{curr.code}</span>
-                        <span className="text-gray-500 ml-2">({curr.symbol})</span>
+                        <span className="text-gray-500 ml-2">
+                          ({curr.symbol})
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -171,9 +174,13 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Navigation */}
-        <div className={`md:hidden transition-all duration-300 ease-in-out ${
-          isMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-        }`}>
+        <div
+          className={`md:hidden transition-all duration-300 ease-in-out ${
+            isMenuOpen
+              ? "max-h-screen opacity-100"
+              : "max-h-0 opacity-0 overflow-hidden"
+          }`}
+        >
           <div className="py-4 pb-6 space-y-4">
             {/* Navigation Links */}
             <div className="flex flex-col space-y-3">
@@ -182,9 +189,9 @@ const Navbar = () => {
                   key={item.name}
                   to={item.path}
                   className={`text-sm font-medium transition-colors py-2 px-1 ${
-                    location.pathname === item.path 
-                      ? 'text-black font-bold border-l-4 border-black pl-3' 
-                      : 'text-black hover:text-gray-600'
+                    location.pathname === item.path
+                      ? "text-black font-bold border-l-4 border-black pl-3"
+                      : "text-black hover:text-gray-600"
                   }`}
                   onClick={closeMenu}
                 >
@@ -192,15 +199,19 @@ const Navbar = () => {
                 </Link>
               ))}
             </div>
-            
+
             {/* Currency Selector for Mobile */}
             {user && (
               <div className="py-3 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-600 mb-3">Select Currency</p>
+                <p className="text-sm font-medium text-gray-600 mb-3">
+                  Select Currency
+                </p>
                 <select
                   value={currency.code}
                   onChange={(e) => {
-                    const newCurrency = availableCurrencies.find(c => c.code === e.target.value);
+                    const newCurrency = availableCurrencies.find(
+                      (c) => c.code === e.target.value
+                    );
                     if (newCurrency) setCurrency(newCurrency);
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white"
@@ -213,7 +224,7 @@ const Navbar = () => {
                 </select>
               </div>
             )}
-            
+
             {/* Auth Actions for Mobile */}
             <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200">
               {user ? (
@@ -248,7 +259,7 @@ const Navbar = () => {
 
       {/* Overlay for mobile menu */}
       {isMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-25 z-30 md:hidden"
           onClick={closeMenu}
         />
