@@ -21,6 +21,7 @@ import {
   Frown,
   Coffee,
   Meh,
+  RefreshCw,
 } from "lucide-react";
 import Button from '../components/common/Button';
 import { Pie, Bar } from 'react-chartjs-2';
@@ -120,7 +121,9 @@ const Dashboard = () => {
   });
   const { currency } = useCurrency();
   const navigate = useNavigate();
-
+  const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [currentUserRank, setCurrentUserRank] = useState(0);
   const badges = [
     { id: 'first_transaction', icon: Star, title: 'First Transaction', description: 'Made your first transaction' },
     { id: 'budget_master', icon: Brain, title: 'Budget Master', description: 'Set up your first budget' },
@@ -258,6 +261,7 @@ useEffect(() => {
   fetchWishlist();
   fetchTodaysMood();
   fetchMoodStats();
+  fetchLeaderboard();
   
   const initializeAchievements = async () => {
     await fetchAchievements();
@@ -267,6 +271,33 @@ useEffect(() => {
   initializeAchievements();
   trackUserActivity('dashboard_visit');
 }, []);
+
+const fetchLeaderboard = async () => {
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) return;
+
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, avatar_url, xp, level, username")
+      .order("xp", { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
+
+    setLeaderboard(data || []);
+
+  
+    if (data) {
+      const rank = data.findIndex((u) => u.id === authUser.id) + 1;
+      setCurrentUserRank(rank > 0 ? rank : null);
+    }
+  } catch (error) {
+    console.error("Error fetching leaderboard:", error);
+  }
+};
 
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1345,7 +1376,7 @@ useEffect(() => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
+      {/* <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold">Leaderboard</h2>
           <Crown className="w-6 h-6 text-yellow" />
@@ -1361,7 +1392,7 @@ useEffect(() => {
             Compete with friends and earn rewards
           </p>
         </div>
-      </div>
+      </div> */}
 
       {showAddGoalModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1502,53 +1533,158 @@ useEffect(() => {
           </div>
         </div>
       )}
- 
-      {/* Mood Selection Modal */}
-{showMoodModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">How are you feeling?</h2>
-        <button
-          onClick={() => setShowMoodModal(false)}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
-      
-      <p className="text-gray-600 mb-6">
-        Tracking your mood helps understand emotional spending patterns
-      </p>
-      
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {moodOptions.map((mood) => (
-          <button
-            key={mood.id}
-            onClick={() => logMood(mood.id)}
-            className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
-              userMood === mood.id 
-                ? 'border-yellow-500 bg-yellow-50' 
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-            }`}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold">Leaderboard</h2>
+          <Crown className="w-6 h-6 text-yellow" />
+        </div>
+
+        <div className="space-y-4">
+          {leaderboard.map((user, index) => (
+            <div
+              key={user.id}
+              className={`flex items-center gap-4 p-3 rounded-lg ${
+                profile?.id === user.id
+                  ? "bg-yellow-50 border border-yellow-200"
+                  : ""
+              }`}
+            >
+              <span
+                className={`w-8 h-8 flex items-center justify-center rounded-full text-white font-bold ${
+                  index === 0
+                    ? "bg-yellow-500"
+                    : index === 1
+                    ? "bg-gray-400"
+                    : index === 2
+                    ? "bg-yellow-700"
+                    : "bg-gray-300"
+                }`}
+              >
+                {index + 1}
+              </span>
+
+              <img
+                src={
+                  user.avatar_url ||
+                  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"
+                }
+                alt={user.first_name}
+                className="w-10 h-10 rounded-full object-cover"
+                onError={(e) =>
+                  (e.currentTarget.src =
+                    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face")
+                }
+              />
+
+              <div className="flex-1">
+                <h3 className="font-medium">
+                  {user.first_name} {user.last_name}
+                  {profile?.id === user.id && (
+                    <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                      You
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-gray-500">@{user.username}</p>
+              </div>
+
+              <div className="text-right">
+                <p className="font-semibold">Lvl {user.level}</p>
+                <p className="text-sm text-gray-500">{user.xp} XP</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {currentUserRank && currentUserRank > 10 && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center gap-4 p-3">
+              <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 font-bold">
+                {currentUserRank}
+              </span>
+
+              <img
+                src={
+                  profile?.avatar_url ||
+                  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"
+                }
+                alt="Your rank"
+                className="w-10 h-10 rounded-full object-cover"
+              />
+
+              <div className="flex-1">
+                <h3 className="font-medium">
+                  You
+                  <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                    Your rank
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-500">@{profile?.username}</p>
+              </div>
+
+              <div className="text-right">
+                <p className="font-semibold">Lvl {profile?.level || 1}</p>
+                <p className="text-sm text-gray-500">{profile?.xp || 0} XP</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-center">
+          <Button
+            onClick={fetchLeaderboard}
+            variant="outline"
+            className="flex items-center gap-2"
           >
-            <span className="text-3xl mb-2">{mood.emoji}</span>
-            <span className="font-medium">{mood.label}</span>
-          </button>
-        ))}
+            <RefreshCw className="w-4 h-4" />
+            Refresh Leaderboard
+          </Button>
+        </div>
       </div>
-      
-      <div className="mt-6 flex justify-end">
-        <Button 
-          onClick={() => setShowMoodModal(false)}
-          variant="outline"
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
+
+      {/* Mood Selection Modal */}
+      {showMoodModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">How are you feeling?</h2>
+              <button
+                onClick={() => setShowMoodModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Tracking your mood helps understand emotional spending patterns
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {moodOptions.map((mood) => (
+                <button
+                  key={mood.id}
+                  onClick={() => logMood(mood.id)}
+                  className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
+                    userMood === mood.id
+                      ? "border-yellow-500 bg-yellow-50"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className="text-3xl mb-2">{mood.emoji}</span>
+                  <span className="font-medium">{mood.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <Button onClick={() => setShowMoodModal(false)} variant="outline">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       {showAvatarModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
