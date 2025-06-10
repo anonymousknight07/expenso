@@ -72,13 +72,15 @@ class WebSocketManager {
         return;
       }
 
-      const wsUrl = `${
-        import.meta.env.VITE_WS_URL || "ws://localhost:3001"
-      }?token=${session.access_token}`;
+      // Use your deployed Render URL for WebSocket connection
+      // Convert HTTPS to WSS for WebSocket protocol
+      const wsUrl = `wss://expo-backend-0kn5.onrender.com?token=${session.access_token}`;
+
+      console.log("Connecting to WebSocket:", wsUrl);
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log("WebSocket connected");
+        console.log("WebSocket connected to deployed server");
         this.reconnectAttempts = 0;
         this.isConnecting = false;
         this.emit("connection", { status: "connected" });
@@ -93,8 +95,8 @@ class WebSocketManager {
         }
       };
 
-      this.ws.onclose = () => {
-        console.log("WebSocket disconnected");
+      this.ws.onclose = (event) => {
+        console.log("WebSocket disconnected:", event.code, event.reason);
         this.isConnecting = false;
         this.emit("connection", { status: "disconnected" });
         this.handleReconnect();
