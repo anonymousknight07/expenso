@@ -19,9 +19,14 @@ import {
   UserPlus,
   RefreshCw,
   IndianRupee,
+  MessageSquare,
+  Award,
+  Settings,
 } from "lucide-react";
 import Button from "../components/common/Button";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import ChatInterface from "../components/chat/ChatInterface";
 
 interface Challenge {
   id: string;
@@ -90,8 +95,9 @@ interface TriviaQuestion {
 }
 
 const Social = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
-    "challenges" | "leaderboard" | "suggestions" | "games"
+    "challenges" | "leaderboard" | "suggestions" | "games" | "chat"
   >("challenges");
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [gameSuggestions, setGameSuggestions] = useState<GameSuggestion[]>([]);
@@ -116,6 +122,12 @@ const Social = () => {
   const [triviaQuestions, setTriviaQuestions] = useState<TriviaQuestion[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const { currency } = useCurrency();
+  const [chatStats, setChatStats] = useState({
+    totalMessages: 0,
+    roomsJoined: 0,
+    friendsCount: 0,
+    rank: 0,
+  });
 
   const [newChallenge, setNewChallenge] = useState({
     title: "",
@@ -134,7 +146,7 @@ const Social = () => {
     description: "",
   });
 
-  const AI_MODEL = "mistralai/mistral-7b-instruct"; 
+  const AI_MODEL = "mistralai/mistral-7b-instruct";
 
   const [inviteEmail, setInviteEmail] = useState("");
 
@@ -193,6 +205,32 @@ const Social = () => {
         .eq("id", user.id)
         .single();
       setUserProfile(profile);
+      fetchChatStats(user.id);
+    }
+  };
+
+  const fetchChatStats = async (userId: string) => {
+    try {
+      // Fetch user's chat statistics
+      const [messagesResult, roomsResult] = await Promise.all([
+        supabase
+          .from("chat_messages")
+          .select("id", { count: "exact" })
+          .eq("user_id", userId),
+        supabase
+          .from("room_members")
+          .select("id", { count: "exact" })
+          .eq("user_id", userId),
+      ]);
+
+      setChatStats({
+        totalMessages: messagesResult.count || 0,
+        roomsJoined: roomsResult.count || 0,
+        friendsCount: 0, // TODO: Implement friends system
+        rank: 1, // TODO: Implement ranking system
+      });
+    } catch (error) {
+      console.error("Error fetching chat stats:", error);
     }
   };
 
@@ -838,6 +876,7 @@ const Social = () => {
             { id: "leaderboard", label: "Leaderboard", icon: Crown },
             { id: "suggestions", label: "Ideas", icon: Lightbulb },
             { id: "games", label: "Games", icon: Gamepad2 },
+            { id: "chat", label: "Chat", icon: MessageSquare },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -1383,6 +1422,77 @@ const Social = () => {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Chat Tab */}
+        {activeTab === "chat" && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <h2 className="text-2xl font-bold">Community Chat</h2>
+              <div className="flex items-center gap-2">
+                <div className="bg-yellow-100 px-3 py-1 rounded-full text-sm">
+                  <span className="font-medium">#{chatStats.rank}</span> Rank
+                </div>
+                <Button variant="outline" className="p-2">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Chat Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <MessageSquare className="w-4 h-4 text-blue-500" />
+                  <span className="font-medium">Messages</span>
+                </div>
+                <div className="text-xl font-bold text-blue-600">
+                  {chatStats.totalMessages}
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg shadow text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Users className="w-4 h-4 text-green-500" />
+                  <span className="font-medium">Rooms</span>
+                </div>
+                <div className="text-xl font-bold text-green-600">
+                  {chatStats.roomsJoined}
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg shadow text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <UserPlus className="w-4 h-4 text-purple-500" />
+                  <span className="font-medium">Friends</span>
+                </div>
+                <div className="text-xl font-bold text-purple-600">
+                  {chatStats.friendsCount}
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg shadow text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Award className="w-4 h-4 text-yellow-500" />
+                  <span className="font-medium">Rank</span>
+                </div>
+                <div className="text-xl font-bold text-yellow-600">
+                  #{chatStats.rank}
+                </div>
+              </div>
+            </div>
+
+            {/* Chat Interface */}
+            <div className="container mx-auto h-[calc(100vh-5rem)]">
+              <ChatInterface />
+            </div>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              <span>
+                Tap a room to start chatting • Swipe back to see room list
+              </span>
+            </div>
           </div>
         )}
       </div>
