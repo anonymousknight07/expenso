@@ -7,6 +7,7 @@ import Budget from "./pages/Budget";
 import Reports from "./pages/Reports";
 import JarSystem from "./pages/JarSystem";
 import StockMarket from "./pages/StockMarket";
+import Social from "./pages/Social";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Layout from "./components/layout/Layout";
@@ -91,6 +92,14 @@ function App() {
             element={
               <Layout>
                 <StockMarket />
+              </Layout>
+            }
+          />
+          <Route
+            path="/social"
+            element={
+              <Layout>
+                <Social />
               </Layout>
             }
           />

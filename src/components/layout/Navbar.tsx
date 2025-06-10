@@ -65,6 +65,7 @@ const Navbar = () => {
         { name: "BUDGET", path: "/budget" },
         { name: "JAR SYSTEM", path: "/jar-system" },
         { name: "STOCK MARKET", path: "/stock-market" },
+        { name: "SOCIAL", path: "/social" },
         { name: "REPORTS", path: "/reports" },
       ];
     }
