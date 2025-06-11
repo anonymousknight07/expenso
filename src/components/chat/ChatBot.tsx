@@ -156,12 +156,12 @@ const ChatBot = () => {
             Authorization: `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "openai/gpt-3.5-turbo",
+            model: "deepseek/deepseek-r1-0528-qwen3-8b:free",
             messages: [
               {
                 role: "system",
                 content:
-                  "You are a friendly and knowledgeable financial advisor bot for Expenso. Your name is Penny, and you are developed by Akshat, to help users. Focus only on financial advice, budgeting, savings, and questions about using Expenso. Be concise but helpful. Do not engage in non-financial conversations.",
+                  "You are a friendly and knowledgeable financial advisor bot for Expenso. Your name is Penny, and you are developed by Akshat, to help users. Focus only on financial advice, budgeting, savings, and questions about using Expenso.If the user is asking more about Akshat , redirect them to his socials, saying you can find his socials in the footer. Be concise but helpful. Do not engage in non-financial conversations.",
               },
               ...messages,
               { role: "user", content: userMessage },

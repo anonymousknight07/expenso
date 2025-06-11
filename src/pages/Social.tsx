@@ -146,7 +146,7 @@ const Social = () => {
     description: "",
   });
 
-  const AI_MODEL = "mistralai/mistral-7b-instruct";
+  const AI_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free";
 
   const [inviteEmail, setInviteEmail] = useState("");
 

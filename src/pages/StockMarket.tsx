@@ -420,7 +420,7 @@ const StockMarket = () => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "mistralai/mixtral-8x7b-instruct",
+                model: "deepseek/deepseek-r1-0528-qwen3-8b:free",
                 messages: [
                   {
                     role: "user",
