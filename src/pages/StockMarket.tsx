@@ -77,9 +77,7 @@ const MarketNews = () => {
     setError(null);
 
     try {
-      const response = await fetch(
-        `https://gnews.io/api/v4/top-headlines?category=business&lang=en&country=us&max=9&apikey=${import.meta.env.VITE_GNEWS_API_KEY}`,
-      );
+     const response = await fetch("/api/news");
 
       if (response.status === 429) {
         const staleRaw = localStorage.getItem(GNEWS_CACHE_KEY);

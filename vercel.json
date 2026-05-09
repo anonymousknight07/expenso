@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/news",
+      "destination": "https://gnews.io/api/v4/top-headlines?category=business&lang=en&country=us&max=9&apikey=YOUR_KEY_HERE"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
