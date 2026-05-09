@@ -59,16 +59,19 @@ const Register = () => {
 
     try {
       // Step 1: Sign up user with Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
+      const { data: authData, error: signUpError } = await supabase.auth.signUp(
+        {
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+            },
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         },
-      });
+      );
 
       if (signUpError) throw signUpError;
 
