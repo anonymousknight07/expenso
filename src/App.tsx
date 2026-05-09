@@ -19,6 +19,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChatBot from "./components/chat/ChatBot";
 import MarketNews from "./pages/MarketNews";
+import NotFound from "./pages/NotFound";
 
 // Helper to reduce repetition
 const PrivatePage = ({ children }: { children: React.ReactNode }) => (
@@ -135,7 +136,10 @@ function App() {
               </PrivatePage>
             }
           />
+
+          <Route path="*" element={<NotFound />} />
         </Routes>
+
         <ChatBot />
       </Router>
     </CurrencyProvider>

@@ -148,12 +148,13 @@ const Footer = () => {
                 <>
                   <li>
                     <Link
-                      to="/login\"
+                      to="/login"
                       className="text-gray-300 hover:text-yellow transition-colors"
                     >
                       Login
                     </Link>
                   </li>
+
                   <li>
                     <Link
                       to="/register"
@@ -162,6 +163,8 @@ const Footer = () => {
                       Sign Up
                     </Link>
                   </li>
+
+                
                 </>
               ) : (
                 <>
@@ -174,6 +177,7 @@ const Footer = () => {
                       Dashboard
                     </Link>
                   </li>
+
                   <li>
                     <Link
                       to="/profile"
@@ -182,23 +186,6 @@ const Footer = () => {
                     >
                       Profile Settings
                     </Link>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className="text-gray-300 hover:text-yellow transition-colors"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (!user) {
-                          navigate("/login");
-                        } else {
-                          // Handle password reset for logged-in users
-                          navigate("/reset-password");
-                        }
-                      }}
-                    >
-                      Password Reset
-                    </a>
                   </li>
                 </>
               )}
