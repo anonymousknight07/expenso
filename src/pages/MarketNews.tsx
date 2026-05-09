@@ -61,12 +61,6 @@ const MarketNews = () => {
   }, []);
 
   const fetchNews = async () => {
-    if (!import.meta.env.VITE_GNEWS_API_KEY) {
-      console.warn("GNews API key not configured");
-      return;
-    }
-
-    // Serve from cache when available (avoids burning daily quota)
     const cached = getGNewsCache("us");
     if (cached) {
       setNews(cached);
@@ -75,9 +69,8 @@ const MarketNews = () => {
 
     setLoading(true);
     setError(null);
-
     try {
-     const response = await fetch("/api/news");
+      const response = await fetch("/api/news");
 
       if (response.status === 429) {
         const staleRaw = localStorage.getItem(GNEWS_CACHE_KEY);

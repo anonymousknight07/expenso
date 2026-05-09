@@ -18,7 +18,7 @@ import { CurrencyProvider } from "./contexts/CurrencyContext";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChatBot from "./components/chat/ChatBot";
-import MarketNews from "./pages/StockMarket";
+import MarketNews from "./pages/MarketNews";
 
 function App() {
   return (
