@@ -203,35 +203,39 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchRooms = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch rooms without the broken nested join
+      const { data: roomsData, error: roomsError } = await supabase
         .from("chat_rooms")
-        .select(
-          `
-            *,
-            chat_messages (
-              id,
-              content,
-              created_at,
-              user:profiles (
-                id,
-                first_name,
-                last_name,
-                avatar_url
-              )
-            )
-          `
-        )
+        .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (roomsError) throw roomsError;
 
-      const formattedRooms = data.map((room) => ({
-        ...room,
-        last_message: room.chat_messages[0] || null,
-        member_count: 0, // Will be updated by WebSocket
-      }));
+      // Fetch last message per room separately to avoid the broken FK join
+      const roomsWithMessages = await Promise.all(
+        roomsData.map(async (room) => {
+          const { data: lastMsg } = await supabase
+            .from("chat_messages")
+            .select(
+              `id, content, created_at, user_id,
+            user:profiles!chat_messages_user_id_profiles_fkey(
+              id, first_name, last_name, avatar_url
+            )`,
+            )
+            .eq("room_id", room.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-      setRooms(formattedRooms);
+          return {
+            ...room,
+            last_message: lastMsg || null,
+            member_count: 0,
+          };
+        }),
+      );
+
+      setRooms(roomsWithMessages);
     } catch (error) {
       console.error("Error fetching rooms:", error);
       toast.error("Failed to load chat rooms");
@@ -267,24 +271,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       const { data, error } = await supabase
         .from("chat_messages")
         .select(
-          `
-            *,
-            user:profiles (
-              id,
-              first_name,
-              last_name,
-              avatar_url
-            ),
-            replies:chat_messages (
-              *,
-              user:profiles (
-                id,
-                first_name,
-                last_name,
-                avatar_url
-              )
-            )
-          `
+          `*,
+        user:profiles!chat_messages_user_id_profiles_fkey(
+          id, first_name, last_name, avatar_url
+        )`,
         )
         .eq("room_id", roomId)
         .order("created_at", { ascending: true })

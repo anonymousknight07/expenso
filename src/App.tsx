@@ -6,17 +6,19 @@ import Income from "./pages/Income";
 import Budget from "./pages/Budget";
 import Reports from "./pages/Reports";
 import JarSystem from "./pages/JarSystem";
-import StockMarket from "./pages/StockMarket";
+
 import Social from "./pages/Social";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Layout from "./components/layout/Layout";
+import ReceiptScanner from "./pages/ReceiptScanner";
 import Terms from "./pages/Terms";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChatBot from "./components/chat/ChatBot";
+import MarketNews from "./pages/StockMarket";
 
 function App() {
   return (
@@ -88,10 +90,10 @@ function App() {
             }
           />
           <Route
-            path="/stock-market"
+            path="/market"
             element={
               <Layout>
-                <StockMarket />
+                <MarketNews />
               </Layout>
             }
           />
@@ -100,6 +102,14 @@ function App() {
             element={
               <Layout>
                 <Social />
+              </Layout>
+            }
+          />
+          <Route
+            path="/receipt-scanner"
+            element={
+              <Layout>
+                <ReceiptScanner />
               </Layout>
             }
           />

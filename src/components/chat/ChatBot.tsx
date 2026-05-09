@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MessageSquare, X, Send, Loader2 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -34,6 +35,9 @@ const INITIAL_PROMPTS_LOGGED_OUT = [
   "What features does Expenso have?",
 ];
 
+const SYSTEM_PROMPT =
+  "You are a friendly and knowledgeable financial advisor bot for Expenso. Your name is Penny, and you are developed by Akshat, to help users. Focus only on financial advice, budgeting, savings, and questions about using Expenso. If the user is asking more about Akshat, redirect them to his socials, saying you can find his socials in the footer. Be concise but helpful. Do not engage in non-financial conversations.";
+
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -52,7 +56,6 @@ const ChatBot = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Check authentication status
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -78,7 +81,6 @@ const ChatBot = () => {
 
     checkAuth();
 
-    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -86,7 +88,6 @@ const ChatBot = () => {
       setIsLoggedIn(!!user);
       setSuggestedQuestions(user ? SUGGESTED_QUESTIONS : BASIC_QUESTIONS);
 
-      // Clear messages when auth state changes to maintain privacy
       if (event === "SIGNED_OUT") {
         setMessages([]);
       }
@@ -134,7 +135,6 @@ const ChatBot = () => {
     setIsLoading(true);
 
     try {
-      // Handle non-logged-in users
       if (!isLoggedIn) {
         const response = handleBasicQuestion(userMessage);
         setMessages((prev) => [
@@ -146,45 +146,46 @@ const ChatBot = () => {
         return;
       }
 
-      // Handle logged-in users with full AI functionality
-      const response = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "deepseek/deepseek-r1-0528-qwen3-8b:free",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are a friendly and knowledgeable financial advisor bot for Expenso. Your name is Penny, and you are developed by Akshat, to help users. Focus only on financial advice, budgeting, savings, and questions about using Expenso.If the user is asking more about Akshat , redirect them to his socials, saying you can find his socials in the footer. Be concise but helpful. Do not engage in non-financial conversations.",
-              },
-              ...messages,
-              { role: "user", content: userMessage },
-            ],
-          }),
-        }
-      );
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+     const response = await fetch(
+       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+       {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+           apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+         },
+         body: JSON.stringify({
+           messages,
+           systemPrompt: SYSTEM_PROMPT,
+         }),
+       },
+     );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Edge function error:", response.status, errText);
+        throw new Error(`Edge function error: ${response.status}`);
+      }
 
       const data = await response.json();
-      const botResponse = data.choices[0].message.content;
+      const botResponse = data.choices?.[0]?.message?.content;
+      if (!botResponse) throw new Error("Empty response from model");
 
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: botResponse },
       ]);
 
-      const newSuggestions = [
+      setSuggestedQuestions([
         "Tell me more about budgeting",
         "How can I improve my savings?",
         "What are good financial habits?",
         "Tips for emergency funds",
-      ];
-      setSuggestedQuestions(newSuggestions);
+      ]);
     } catch (error) {
       console.error("Error:", error);
       setMessages((prev) => [
@@ -213,6 +214,7 @@ const ChatBot = () => {
     <div className="fixed bottom-0 right-0 sm:bottom-4 sm:right-4 z-50">
       {isOpen ? (
         <div className="bg-white flex flex-col h-[100vh] w-full sm:h-[500px] sm:w-[380px] sm:rounded-lg sm:shadow-xl">
+          {/* Header */}
           <div className="p-3 sm:p-4 bg-yellow sm:rounded-t-lg flex items-center gap-2 sm:gap-3">
             <img
               src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
@@ -237,6 +239,7 @@ const ChatBot = () => {
             </button>
           </div>
 
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
             {messages.length === 0 && (
               <div className="text-center text-gray-500 py-6 sm:py-8">
@@ -301,13 +304,13 @@ const ChatBot = () => {
                   />
                 )}
                 <div
-                  className={`max-w-[85%] rounded-lg p-2.5 sm:p-3 text-sm ${
+                  className={`max-w-[85%] rounded-lg p-2.5 sm:p-3 text-sm prose prose-sm max-w-none ${
                     message.role === "user"
-                      ? "bg-yellow text-black"
+                      ? "bg-yellow text-black prose-invert"
                       : "bg-gray-100 text-black"
                   }`}
                 >
-                  {message.content}
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
                 {message.role === "user" && (
                   <img
@@ -353,6 +356,7 @@ const ChatBot = () => {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Input */}
           <div className="p-3 sm:p-4 border-t">
             <div className="flex gap-2">
               <input

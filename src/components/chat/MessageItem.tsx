@@ -5,8 +5,7 @@ import {
   Reply,
   Edit,
   Trash2,
-  Heart,
-  ThumbsUp,
+ 
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
@@ -175,7 +174,11 @@ const MessageItem = ({
           )}
 
           <div className="relative">
-            <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+            <button
+              type="button"
+              className="p-1 hover:bg-gray-200 rounded transition-colors"
+              title="More options"
+            >
               <MoreVertical className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
             </button>
           </div>

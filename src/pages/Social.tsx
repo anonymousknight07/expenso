@@ -152,23 +152,17 @@ const Social = () => {
 
   useEffect(() => {
     fetchUser();
-    fetchChallenges();
     fetchGameSuggestions();
     fetchLeaderboard();
 
-    // Set up real-time subscriptions
     const challengesSubscription = supabase
       .channel("challenges_channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "challenges",
-        },
+        { event: "*", schema: "public", table: "challenges" },
         () => {
           fetchChallenges();
-        }
+        },
       )
       .subscribe();
 
@@ -176,14 +170,10 @@ const Social = () => {
       .channel("suggestions_channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "game_suggestions",
-        },
+        { event: "*", schema: "public", table: "game_suggestions" },
         () => {
           fetchGameSuggestions();
-        }
+        },
       )
       .subscribe();
 
@@ -195,17 +185,19 @@ const Social = () => {
 
   const fetchUser = async () => {
     const {
-      data: { user },
+      data: { user: currentUser },
     } = await supabase.auth.getUser();
-    if (user) {
-      setUser(user);
+    if (currentUser) {
+      setUser(currentUser);
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", currentUser.id)
         .single();
       setUserProfile(profile);
-      fetchChatStats(user.id);
+      fetchChatStats(currentUser.id);
+      // Pass user directly so fetchChallenges doesn't depend on state being set yet
+      fetchChallenges(currentUser);
     }
   };
 
@@ -234,37 +226,38 @@ const Social = () => {
     }
   };
 
-  const fetchChallenges = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+ const fetchChallenges = async (currentUser?: any) => {
+   const resolvedUser = currentUser || user;
+   if (!resolvedUser) return;
 
-    const { data, error } = await supabase
-      .from("challenges")
-      .select(
-        `*, 
-        creator_profile:profiles!challenges_created_by_fkey(first_name, last_name, avatar_url),
-        challenge_participants(count),
-        user_participation:challenge_participants!left(id, progress, completed, joined_at)`
-      )
-      .eq("user_participation.user_id", user.id)
-      .or(`is_public.eq.true,created_by.eq.${user.id}`)
-      .order("created_at", { ascending: false });
+   const { data, error } = await supabase
+     .from("challenges")
+     .select(
+       `*,
+      creator_profile:profiles!challenges_created_by_profiles_fkey(first_name, last_name, avatar_url),
+      challenge_participants(count),
+      user_participation:challenge_participants!left(id, progress, completed, joined_at)`,
+     )
+     .or(`is_public.eq.true,created_by.eq.${resolvedUser.id}`)
+     .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching challenges:", error);
-      return;
-    }
+   if (error) {
+     console.error("Error fetching challenges:", error);
+     return;
+   }
 
-    const formattedChallenges = data.map((challenge) => ({
-      ...challenge,
-      participants_count: challenge.challenge_participants[0]?.count || 0,
-      user_participation: challenge.user_participation[0] || null,
-    }));
+   const formattedChallenges = data.map((challenge) => ({
+     ...challenge,
+     participants_count: challenge.challenge_participants[0]?.count || 0,
+     user_participation:
+       challenge.user_participation?.find(
+         (p: any) => p.user_id === resolvedUser.id,
+       ) || null,
+   }));
 
-    setChallenges(formattedChallenges);
-  };
+   setChallenges(formattedChallenges);
+ };
+
 
   const fetchGameSuggestions = async () => {
     const {
@@ -306,15 +299,7 @@ const Social = () => {
   const fetchLeaderboard = async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select(
-        `id,
-        xp,
-        level,
-        first_name,
-        last_name,
-        avatar_url,
-        challenge_participants(count)`
-      )
+      .select(`id, xp, level, first_name, last_name, avatar_url`)
       .order("xp", { ascending: false })
       .limit(10);
 
@@ -323,17 +308,18 @@ const Social = () => {
       return;
     }
 
-    const formattedLeaderboard = data.map((profile) => ({
-      user_id: profile.id,
-      total_xp: profile.xp || 0,
-      level: profile.level || 1,
-      challenges_completed: profile.challenge_participants[0]?.count || 0,
-      profile: {
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        avatar_url: profile.avatar_url,
-      },
-    }));
+   
+const formattedLeaderboard = data.map((profile) => ({
+  user_id: profile.id,
+  total_xp: profile.xp || 0,
+  level: profile.level || 1,
+  challenges_completed: 0, // fetch separately if needed
+  profile: {
+    first_name: profile.first_name,
+    last_name: profile.last_name,
+    avatar_url: profile.avatar_url,
+  },
+}));
 
     setLeaderboard(formattedLeaderboard);
   };

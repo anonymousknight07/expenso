@@ -445,29 +445,25 @@ const fetchLeaderboard = async () => {
 
     setAchievements(data || []);
   };
-  const fetchTodaysMood = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+ const fetchTodaysMood = async () => {
+   const {
+     data: { user },
+   } = await supabase.auth.getUser();
+   if (!user) return;
 
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+   const today = new Date().toISOString().split("T")[0]; // "2026-05-10"
 
-    const { data, error } = await supabase
-      .from("mood_tracker")
-      .select("mood")
-      .eq("user_id", user.id)
-      .gte("date", today.toISOString())
-      .lt("date", tomorrow.toISOString())
-      .maybeSingle();
+   const { data, error } = await supabase
+     .from("mood_tracker")
+     .select("mood")
+     .eq("user_id", user.id)
+     .eq("date", today) // simple equality on DATE column
+     .maybeSingle();
 
-    if (!error && data) {
-      setUserMood(data.mood);
-    }
-  };
+   if (!error && data) {
+     setUserMood(data.mood);
+   }
+ };
 
   // Fetch mood statistics for chart
   const fetchMoodStats = async () => {
@@ -507,26 +503,32 @@ const fetchLeaderboard = async () => {
     } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Use DATE format only — the conflict key is (user_id, date) where date is DATE type
+    const today = new Date().toISOString().split("T")[0]; // "2026-05-10"
+
     const { error } = await supabase.from("mood_tracker").upsert(
       {
         user_id: user.id,
         mood,
-        date: new Date().toISOString(),
-        auth_user_id: user.id,
+        date: today, // DATE column needs "YYYY-MM-DD" not full ISO string
+        // removed auth_user_id — doesn't exist in schema
       },
-      { onConflict: "user_id,date" }
+      { onConflict: "user_id,date" },
     );
 
-    if (!error) {
-      setUserMood(mood);
-      setShowMoodModal(false);
-      trackUserActivity("mood_logged");
-      fetchMoodStats();
+    if (error) {
+      console.error("Error logging mood:", error);
+      return;
     }
+
+    setUserMood(mood);
+    setShowMoodModal(false);
+    trackUserActivity("mood_logged");
+    fetchMoodStats();
   };
 
 
-  const updateXPAndLevel = async (xpToAdd) => {
+  const updateXPAndLevel = async (xpToAdd:BigInteger) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
