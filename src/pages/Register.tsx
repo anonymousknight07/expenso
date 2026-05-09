@@ -67,7 +67,7 @@ const Register = () => {
             first_name: formData.firstName,
             last_name: formData.lastName,
           },
-          
+           emailRedirectTo: `${window.location.origin}/dashboard`
         },
       });
 

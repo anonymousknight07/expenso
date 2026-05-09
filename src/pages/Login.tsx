@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Button from '../components/common/Button';
 import { supabase } from '../lib/supabase';
@@ -23,6 +24,7 @@ const Login = () => {
       });
       if (error) throw error;
 
+      // ← redirect back to where they came from, or dashboard
       const from = (location.state as any)?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     } catch (error) {
