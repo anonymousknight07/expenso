@@ -23,7 +23,6 @@ const Login = () => {
       });
       if (error) throw error;
 
-      // ← redirect back to where they came from, or dashboard
       const from = (location.state as any)?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     } catch (error) {
