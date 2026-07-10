@@ -46,7 +46,7 @@ const MessageItem = ({
 
   return (
     <div
-      className={`flex gap-2 md:gap-3 group hover:bg-gray-50 p-2 rounded-lg transition-colors ${
+      className={`flex gap-2 md:gap-3 group hover:bg-white/5 p-2 rounded-lg transition-colors ${
         isOwnMessage ? "flex-row-reverse" : ""
       }`}
       onMouseEnter={() => setShowActions(true)}
@@ -63,8 +63,8 @@ const MessageItem = ({
             className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
           />
         ) : (
-          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gray-300 flex items-center justify-center">
-            <span className="text-xs md:text-sm font-medium text-gray-600">
+          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white/20 flex items-center justify-center">
+            <span className="text-xs md:text-sm font-medium text-gray-300">
               {message.user.first_name[0]}
               {message.user.last_name[0]}
             </span>
@@ -80,10 +80,10 @@ const MessageItem = ({
             isOwnMessage ? "justify-end" : ""
           }`}
         >
-          <span className="font-medium text-gray-900">
+          <span className="font-medium text-white">
             {message.user.first_name} {message.user.last_name}
           </span>
-          <span className="text-gray-500">
+          <span className="text-gray-400">
             {formatDate(message.created_at)}
           </span>
           {message.is_edited && <span className="text-gray-400">(edited)</span>}
@@ -91,8 +91,8 @@ const MessageItem = ({
 
         {/* Reply Context */}
         {message.reply_to && (
-          <div className="mb-2 p-2 bg-gray-100 rounded border-l-2 border-gray-300">
-            <div className="text-xs text-gray-600 flex items-center gap-1">
+          <div className="mb-2 p-2 bg-white/10 rounded border-l-2 border-white/15">
+            <div className="text-xs text-gray-300 flex items-center gap-1">
               <Reply className="w-3 h-3" />
               Replying to message
             </div>
@@ -102,7 +102,7 @@ const MessageItem = ({
         {/* Message Text */}
         <div
           className={`inline-block px-3 py-2 rounded-lg max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl ${
-            isOwnMessage ? "bg-yellow text-black" : "bg-gray-100 text-gray-900"
+            isOwnMessage ? "bg-yellow text-white" : "bg-white/10 text-white"
           }`}
         >
           <p className="text-sm whitespace-pre-wrap break-words">
@@ -130,13 +130,13 @@ const MessageItem = ({
         <div className="flex items-center gap-1 mt-1">
           <button
             onClick={() => handleReaction("👍")}
-            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+            className="text-xs px-2 py-1 bg-white/10 hover:bg-white/15 rounded-full transition-colors"
           >
             👍
           </button>
           <button
             onClick={() => handleReaction("❤️")}
-            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+            className="text-xs px-2 py-1 bg-white/10 hover:bg-white/15 rounded-full transition-colors"
           >
             ❤️
           </button>
@@ -148,27 +148,27 @@ const MessageItem = ({
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity">
           <button
             onClick={() => onReply(message)}
-            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            className="p-1 hover:bg-white/15 rounded transition-colors"
             title="Reply"
           >
-            <Reply className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+            <Reply className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
           </button>
 
           {isOwnMessage && (
             <>
               <button
                 onClick={() => onEdit(message)}
-                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                className="p-1 hover:bg-white/15 rounded transition-colors"
                 title="Edit"
               >
-                <Edit className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+                <Edit className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
               </button>
               <button
                 onClick={() => onDelete(message.id)}
-                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                className="p-1 hover:bg-white/15 rounded transition-colors"
                 title="Delete"
               >
-                <Trash2 className="w-3 h-3 md:w-4 md:h-4 text-red-500" />
+                <Trash2 className="w-3 h-3 md:w-4 md:h-4 text-red-400" />
               </button>
             </>
           )}
@@ -176,10 +176,10 @@ const MessageItem = ({
           <div className="relative">
             <button
               type="button"
-              className="p-1 hover:bg-gray-200 rounded transition-colors"
+              className="p-1 hover:bg-white/15 rounded transition-colors"
               title="More options"
             >
-              <MoreVertical className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+              <MoreVertical className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
             </button>
           </div>
         </div>

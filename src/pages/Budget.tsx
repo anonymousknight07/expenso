@@ -734,19 +734,19 @@ const Budget = () => {
                 )}
                 Alerts
                 {alerts.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                  <span className="absolute -top-2 -right-2 bg-red-500/100 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
                     {alerts.length}
                   </span>
                 )}
               </Button>
 
               {showAlerts && alerts.length > 0 && (
-                <div className="absolute right-0 mt-2 w-64 md:w-80 bg-white rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                <div className="absolute right-0 mt-2 w-64 md:w-80 glass-card z-50 max-h-96 overflow-y-auto">
                   <div className="p-3 border-b flex justify-between items-center">
                     <h3 className="font-semibold">Budget Alerts</h3>
                     <button
                       onClick={handleAcknowledgeAllAlerts}
-                      className="text-xs text-blue-600 hover:text-blue-800"
+                      className="text-xs text-sky-400 hover:text-sky-300"
                     >
                       Dismiss All
                     </button>
@@ -766,7 +766,7 @@ const Budget = () => {
                               <p className="font-medium">
                                 {budget.category.name}
                               </p>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-gray-300">
                                 {alert.type === "exceeded"
                                   ? "Budget exceeded!"
                                   : alert.type === "approaching"
@@ -775,7 +775,7 @@ const Budget = () => {
                                   ? "Category budgets exceed monthly budget!"
                                   : "Budget alert"}
                               </p>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-gray-400">
                                 {currency.symbol}
                                 {budget.spent.toFixed(2)} of {currency.symbol}
                                 {budget.amount.toFixed(2)}
@@ -783,7 +783,7 @@ const Budget = () => {
                             </div>
                             <button
                               onClick={() => handleAcknowledgeAlert(alert.id)}
-                              className="text-xs text-blue-600 hover:text-blue-800"
+                              className="text-xs text-sky-400 hover:text-sky-300"
                             >
                               Dismiss
                             </button>
@@ -833,19 +833,19 @@ const Budget = () => {
         </div>
 
         {/* Monthly Budget Section */}
-        <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-lg shadow p-6">
+        <div className="glass-card p-6 bg-gradient-to-r from-purple-500/15 to-sky-500/15">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex-1">
-              <h2 className="text-xl font-semibold mb-2 text-purple-800">
+              <h2 className="text-xl font-semibold mb-2 text-purple-300">
                 Monthly Budget
               </h2>
               {monthlyBudget ? (
                 <div className="space-y-2">
-                  <p className="text-3xl font-bold text-purple-600">
+                  <p className="text-3xl font-bold text-purple-300">
                     {currency.symbol}
                     {monthlyBudget.amount.toFixed(2)}
                   </p>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-gray-300">
                     <p>
                       Category budgets total: {currency.symbol}
                       {calculateTotalBudget().toFixed(2)}
@@ -853,8 +853,8 @@ const Budget = () => {
                     <p
                       className={`font-medium ${
                         calculateTotalBudget() > monthlyBudget.amount
-                          ? "text-red-600"
-                          : "text-green-600"
+                          ? "text-red-400"
+                          : "text-emerald-400"
                       }`}
                     >
                       {calculateTotalBudget() > monthlyBudget.amount
@@ -868,7 +868,7 @@ const Budget = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-600">
+                <p className="text-gray-300">
                   No monthly budget set for this month
                 </p>
               )}
@@ -891,7 +891,7 @@ const Budget = () => {
                     onClick={handleDeleteMonthlyBudget}
                     variant="outline"
                     size="sm"
-                    className="text-red-600 hover:text-red-700"
+                    className="text-red-400 hover:text-red-300"
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
                     Delete
@@ -912,29 +912,29 @@ const Budget = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">Monthly Income</h2>
-            <p className="text-3xl font-bold text-green-500">
+            <p className="text-3xl font-bold text-emerald-400">
               {currency.symbol}
               {effectiveIncome.toFixed(2)}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">
               Total Category Budgets
             </h2>
-            <p className="text-3xl font-bold text-blue-500">
+            <p className="text-3xl font-bold text-sky-400">
               {currency.symbol}
               {calculateTotalBudget().toFixed(2)}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">Savings</h2>
             <p
               className={`text-3xl font-bold ${
-                calculateSavings() >= 0 ? "text-green-500" : "text-red-500"
+                calculateSavings() >= 0 ? "text-emerald-400" : "text-red-400"
               }`}
             >
               {currency.symbol}
@@ -946,8 +946,8 @@ const Budget = () => {
 
       {/* Monthly Budget Modal */}
       {(isSettingMonthlyBudget || isEditingMonthlyBudget) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">
               {isEditingMonthlyBudget
                 ? "Edit Monthly Budget"
@@ -974,7 +974,7 @@ const Budget = () => {
                   placeholder="Enter monthly budget amount"
                   required
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-400 mt-1">
                   This is your total budget for the month across all categories
                 </p>
               </div>
@@ -1000,8 +1000,8 @@ const Budget = () => {
       )}
 
       {isAddingBudget && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Add New Budget</h2>
             <form onSubmit={handleAddBudget} className="space-y-4">
               <div>
@@ -1072,7 +1072,7 @@ const Budget = () => {
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-400 mt-1">
                   You'll be notified when spending reaches this percentage of
                   your budget
                 </p>
@@ -1096,14 +1096,14 @@ const Budget = () => {
 
       <div className="space-y-4">
         {budgets.map((budget) => (
-          <div key={budget.id} className="bg-white rounded-lg shadow p-4">
+          <div key={budget.id} className="glass-card p-4">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold">
                     {budget.category.name}
                     {budget.spent > budget.amount && (
-                      <span className="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded">
+                      <span className="ml-2 bg-red-500/15 text-red-300 text-xs font-medium px-2 py-0.5 rounded">
                         Exceeded
                       </span>
                     )}
@@ -1120,11 +1120,11 @@ const Budget = () => {
                     {budget.amount.toFixed(2)}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div className="w-full bg-white/15 rounded-full h-2 mb-2">
                   <div
                     className={`h-2 rounded-full ${
                       budget.spent > budget.amount
-                        ? "bg-red-500"
+                        ? "bg-red-500/100"
                         : budget.spent >=
                           budget.amount * budget.notification_threshold
                         ? "bg-yellow-500"
@@ -1138,7 +1138,7 @@ const Budget = () => {
                     }}
                   ></div>
                 </div>
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-sm text-gray-300">
                   <span>
                     Spent: {currency.symbol}
                     {budget.spent.toFixed(2)}
@@ -1151,7 +1151,7 @@ const Budget = () => {
               </div>
               <button
                 onClick={() => handleDeleteBudget(budget.id)}
-                className="text-red-500 hover:text-red-600"
+                className="text-red-400 hover:text-red-400"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -1160,8 +1160,8 @@ const Budget = () => {
         ))}
 
         {budgets.length === 0 && (
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-gray-500">
+          <div className="glass-card p-6 text-center">
+            <p className="text-gray-400">
               No budgets set for this month. Add your first budget to get
               started.
             </p>

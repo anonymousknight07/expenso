@@ -410,7 +410,7 @@ const ReceiptScanner = () => {
   );
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       {/* Zoom Modal */}
       {zoomImage && (
         <div
@@ -437,14 +437,14 @@ const ReceiptScanner = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow rounded-xl flex items-center justify-center border-2 border-black shadow-[3px_3px_0_0_#000]">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow rounded-xl flex items-center justify-center border-2 border-white/20 shadow-[3px_3px_0_0_#000]">
               <ScanLine size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h1 className="font-serif text-2xl sm:text-3xl text-black">
+              <h1 className="font-serif text-2xl sm:text-3xl text-white">
                 Smart Receipt Scanner
               </h1>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <p className="text-sm text-gray-400 mt-0.5">
                 Snap a receipt, auto-extract details, track spending
               </p>
             </div>
@@ -453,30 +453,30 @@ const ReceiptScanner = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
-          <div className="bg-white border-2 border-black rounded-xl p-3 sm:p-4 shadow-[3px_3px_0_0_#000]">
+          <div className="glass-card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Receipt size={14} className="text-gray-500" />
-              <span className="text-xs text-gray-500 font-medium">
+              <Receipt size={14} className="text-gray-400" />
+              <span className="text-xs text-gray-400 font-medium">
                 Total Scans
               </span>
             </div>
             <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
           </div>
-          <div className="bg-white border-2 border-black rounded-xl p-3 sm:p-4 shadow-[3px_3px_0_0_#000]">
+          <div className="glass-card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Check size={14} className="text-green-600" />
-              <span className="text-xs text-gray-500 font-medium">
+              <Check size={14} className="text-emerald-400" />
+              <span className="text-xs text-gray-400 font-medium">
                 Confirmed
               </span>
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-green-600">
+            <p className="text-xl sm:text-2xl font-bold text-emerald-400">
               {stats.confirmed}
             </p>
           </div>
-          <div className="bg-yellow/20 border-2 border-black rounded-xl p-3 sm:p-4 shadow-[3px_3px_0_0_#000]">
+          <div className="bg-yellow/20 border-2 border-white/20 rounded-xl p-3 sm:p-4 shadow-[3px_3px_0_0_#000]">
             <div className="flex items-center gap-2 mb-1">
               <AlertCircle size={14} className="text-yellow-600" />
-              <span className="text-xs text-gray-500 font-medium">
+              <span className="text-xs text-gray-400 font-medium">
                 Needs Review
               </span>
             </div>
@@ -484,10 +484,10 @@ const ReceiptScanner = () => {
               {stats.review}
             </p>
           </div>
-          <div className="bg-white border-2 border-black rounded-xl p-3 sm:p-4 shadow-[3px_3px_0_0_#000]">
+          <div className="glass-card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign size={14} className="text-gray-500" />
-              <span className="text-xs text-gray-500 font-medium">
+              <DollarSign size={14} className="text-gray-400" />
+              <span className="text-xs text-gray-400 font-medium">
                 Total Tracked
               </span>
             </div>
@@ -504,7 +504,7 @@ const ReceiptScanner = () => {
             className={`relative border-2 border-dashed rounded-2xl transition-all duration-300 ${
               dragActive
                 ? "border-yellow bg-yellow/10 scale-[1.01]"
-                : "border-black bg-white"
+                : "border-white/20 bg-[#16171d]"
             } ${isScanning ? "pointer-events-none" : ""}`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -523,10 +523,10 @@ const ReceiptScanner = () => {
                   )}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="relative">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-black rounded-full border-t-yellow animate-spin" />
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white/20 rounded-full border-t-yellow animate-spin" />
                       <ScanLine
                         size={24}
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-black"
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white"
                       />
                     </div>
                   </div>
@@ -539,13 +539,13 @@ const ReceiptScanner = () => {
                 <p className="font-serif text-lg sm:text-xl mb-2">
                   Scanning receipt...
                 </p>
-                <div className="w-48 sm:w-64 mx-auto bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div className="w-48 sm:w-64 mx-auto bg-white/15 rounded-full h-2 overflow-hidden">
                   <div
                     className="h-full bg-yellow transition-all duration-300 rounded-full"
                     style={{ width: `${scanProgress}%` }}
                   />
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-400 mt-2">
                   {scanProgress < 30
                     ? "Reading image..."
                     : scanProgress < 60
@@ -558,26 +558,26 @@ const ReceiptScanner = () => {
             ) : (
               <div className="p-8 sm:p-12 text-center">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 bg-yellow/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-yellow">
-                  <Camera size={32} className="sm:w-10 sm:h-10 text-black" />
+                  <Camera size={32} className="sm:w-10 sm:h-10 text-white" />
                 </div>
                 <h2 className="font-serif text-xl sm:text-2xl mb-2">
                   Scan a Receipt
                 </h2>
-                <p className="text-gray-500 text-sm sm:text-base mb-6 max-w-md mx-auto">
+                <p className="text-gray-400 text-sm sm:text-base mb-6 max-w-md mx-auto">
                   Take a photo or upload an image of your receipt. We'll
                   automatically extract the store, items, and total.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     onClick={() => cameraInputRef.current?.click()}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-yellow text-black font-medium px-6 py-3 rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-yellow text-white font-medium px-6 py-3 rounded-xl border-2 border-white/20 shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
                   >
                     <Camera size={18} />
                     Take Photo
                   </button>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-black text-white font-medium px-6 py-3 rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-black text-white font-medium px-6 py-3 rounded-xl border-2 border-white/20 shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
                   >
                     <Upload size={18} />
                     Upload Image
@@ -609,8 +609,8 @@ const ReceiptScanner = () => {
 
         {/* Review Section */}
         {showReview && currentReviewReceipt && (
-          <div className="mb-8 border-2 border-black rounded-2xl overflow-hidden shadow-[4px_4px_0_0_#000]">
-            <div className="bg-yellow px-4 sm:px-6 py-3 flex items-center justify-between border-b-2 border-black">
+          <div className="mb-8 border-2 border-white/20 rounded-2xl overflow-hidden shadow-[4px_4px_0_0_#000]">
+            <div className="bg-yellow px-4 sm:px-6 py-3 flex items-center justify-between border-b-2 border-white/20">
               <div className="flex items-center gap-2">
                 <Edit3 size={18} />
                 <h2 className="font-serif text-lg sm:text-xl">
@@ -619,7 +619,7 @@ const ReceiptScanner = () => {
               </div>
               <button
                 onClick={cancelReview}
-                className="text-black hover:text-gray-600 transition-colors"
+                className="text-white hover:text-gray-300 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -629,7 +629,7 @@ const ReceiptScanner = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Image Preview */}
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
+                  <h3 className="text-sm font-medium text-gray-400 mb-2">
                     Receipt Image
                   </h3>
                   <div className="relative group">
@@ -637,7 +637,7 @@ const ReceiptScanner = () => {
                       <img
                         src={previewImage}
                         alt="Receipt"
-                        className="w-full rounded-xl border-2 border-gray-200 object-contain max-h-80"
+                        className="w-full rounded-xl border-2 border-white/10 object-contain max-h-80"
                       />
                     )}
                     {previewImage && (
@@ -655,7 +655,7 @@ const ReceiptScanner = () => {
                 <div className="space-y-4">
                   {/* Store Name */}
                   <div>
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-600 mb-1">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-300 mb-1">
                       <Store size={14} />
                       Store Name
                     </label>
@@ -663,14 +663,14 @@ const ReceiptScanner = () => {
                       type="text"
                       value={editStoreName}
                       onChange={(e) => setEditStoreName(e.target.value)}
-                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-yellow focus:outline-none transition-colors text-sm"
+                      className="w-full px-3 py-2 border-2 border-white/10 rounded-lg focus:border-yellow focus:outline-none transition-colors text-sm"
                       placeholder="Enter store name"
                     />
                   </div>
 
                   {/* Date */}
                   <div>
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-600 mb-1">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-300 mb-1">
                       <Calendar size={14} />
                       Date
                     </label>
@@ -678,13 +678,13 @@ const ReceiptScanner = () => {
                       type="date"
                       value={editDate}
                       onChange={(e) => setEditDate(e.target.value)}
-                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-yellow focus:outline-none transition-colors text-sm"
+                      className="w-full px-3 py-2 border-2 border-white/10 rounded-lg focus:border-yellow focus:outline-none transition-colors text-sm"
                     />
                   </div>
 
                   {/* Items */}
                   <div>
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-600 mb-2">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-300 mb-2">
                       <ShoppingBag size={14} />
                       Items
                     </label>
@@ -700,7 +700,7 @@ const ReceiptScanner = () => {
                             onChange={(e) =>
                               updateEditItem(index, "name", e.target.value)
                             }
-                            className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-yellow focus:outline-none transition-colors text-sm"
+                            className="flex-1 px-3 py-2 border-2 border-white/10 rounded-lg focus:border-yellow focus:outline-none transition-colors text-sm"
                             placeholder="Item name"
                           />
                           <div className="relative w-28 flex-shrink-0">
@@ -713,7 +713,7 @@ const ReceiptScanner = () => {
                               onChange={(e) =>
                                 updateEditItem(index, "price", e.target.value)
                               }
-                              className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:border-yellow focus:outline-none transition-colors text-sm"
+                              className="w-full pl-8 pr-3 py-2 border-2 border-white/10 rounded-lg focus:border-yellow focus:outline-none transition-colors text-sm"
                               placeholder="0.00"
                               step="0.01"
                               min="0"
@@ -721,7 +721,7 @@ const ReceiptScanner = () => {
                           </div>
                           <button
                             onClick={() => removeEditItem(index)}
-                            className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                            className="text-gray-300 hover:text-red-400 transition-colors p-1"
                           >
                             <X size={16} />
                           </button>
@@ -730,7 +730,7 @@ const ReceiptScanner = () => {
                     </div>
                     <button
                       onClick={addEditItem}
-                      className="mt-2 flex items-center gap-1 text-sm text-gray-500 hover:text-black transition-colors"
+                      className="mt-2 flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
                     >
                       <Plus size={14} />
                       Add item
@@ -738,9 +738,9 @@ const ReceiptScanner = () => {
                   </div>
 
                   {/* Total */}
-                  <div className="bg-gray-50 rounded-xl p-3 border-2 border-gray-200">
+                  <div className="bg-white/5 rounded-xl p-3 border-2 border-white/10">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm text-gray-600">
+                      <span className="font-medium text-sm text-gray-300">
                         Total Amount
                       </span>
                       <div className="flex items-center gap-1">
@@ -765,14 +765,14 @@ const ReceiptScanner = () => {
                   <div className="flex gap-3 pt-2">
                     <button
                       onClick={() => confirmReceipt(currentReviewReceipt.id)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-medium px-4 py-3 rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-sm"
+                      className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-medium px-4 py-3 rounded-xl border-2 border-white/20 shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-sm"
                     >
                       <Check size={18} />
                       Confirm & Create Expense
                     </button>
                     <button
                       onClick={cancelReview}
-                      className="px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-500 hover:border-black hover:text-black transition-colors text-sm"
+                      className="px-4 py-3 rounded-xl border-2 border-white/15 text-gray-400 hover:border-white/40 hover:text-white transition-colors text-sm"
                     >
                       Cancel
                     </button>
@@ -794,8 +794,8 @@ const ReceiptScanner = () => {
                   onClick={() => setFilter(f)}
                   className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border-2 transition-all ${
                     filter === f
-                      ? "bg-black text-white border-black"
-                      : "bg-white text-gray-500 border-gray-200 hover:border-black hover:text-black"
+                      ? "bg-black text-white border-white/20"
+                      : "bg-[#16171d] text-gray-400 border-white/10 hover:border-white/40 hover:text-white"
                   }`}
                 >
                   {f === "all"
@@ -809,7 +809,7 @@ const ReceiptScanner = () => {
           </div>
 
           {filteredReceipts.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl">
+            <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-2xl">
               <ImageIcon size={48} className="mx-auto text-gray-300 mb-3" />
               <p className="text-gray-400 font-medium">
                 No receipts scanned yet
@@ -831,7 +831,7 @@ const ReceiptScanner = () => {
                 return (
                   <div
                     key={receipt.id}
-                    className="border-2 border-black rounded-xl overflow-hidden shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+                    className="border-2 border-white/20 rounded-xl overflow-hidden shadow-[3px_3px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
                   >
                     <div
                       className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 cursor-pointer"
@@ -840,7 +840,7 @@ const ReceiptScanner = () => {
                       }
                     >
                       {/* Thumbnail */}
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/10 rounded-lg flex-shrink-0 overflow-hidden border border-white/10">
                         {imageUrl ? (
                           <img
                             src={imageUrl}
@@ -863,12 +863,12 @@ const ReceiptScanner = () => {
                           <span
                             className={`px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 ${
                               receipt.status === "confirmed"
-                                ? "bg-green-100 text-green-700"
+                                ? "bg-emerald-500/15 text-emerald-300"
                                 : receipt.status === "review"
                                   ? "bg-yellow/20 text-yellow-700"
                                   : receipt.status === "error"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-gray-100 text-gray-600"
+                                    ? "bg-red-500/15 text-red-300"
+                                    : "bg-white/10 text-gray-300"
                             }`}
                           >
                             {receipt.status === "review"
@@ -877,7 +877,7 @@ const ReceiptScanner = () => {
                                 receipt.status.slice(1)}
                           </span>
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                        <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
                           {receipt.receipt_date
                             ? new Date(receipt.receipt_date).toLocaleDateString(
                                 "en-US",
@@ -905,7 +905,7 @@ const ReceiptScanner = () => {
                             e.stopPropagation();
                             deleteReceipt(receipt.id);
                           }}
-                          className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                          className="text-gray-300 hover:text-red-400 transition-colors p-1"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -919,11 +919,11 @@ const ReceiptScanner = () => {
 
                     {/* Expanded Details */}
                     {isExpanded && (
-                      <div className="border-t-2 border-gray-100 p-4 sm:p-6 bg-gray-50/50">
+                      <div className="border-t-2 border-white/10 p-4 sm:p-6 bg-white/5/50">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Items List */}
                           <div>
-                            <h4 className="text-sm font-medium text-gray-500 mb-2">
+                            <h4 className="text-sm font-medium text-gray-400 mb-2">
                               Items
                             </h4>
                             {receiptItems.length > 0 ? (
@@ -934,17 +934,17 @@ const ReceiptScanner = () => {
                                       key={i}
                                       className="flex justify-between text-sm"
                                     >
-                                      <span className="text-gray-700 truncate mr-2">
+                                      <span className="text-gray-200 truncate mr-2">
                                         {item.name}
                                       </span>
-                                      <span className="text-gray-900 font-medium flex-shrink-0">
+                                      <span className="text-white font-medium flex-shrink-0">
                                         {currency.symbol}
                                         {item.price.toFixed(2)}
                                       </span>
                                     </div>
                                   ),
                                 )}
-                                <div className="border-t border-gray-200 pt-1.5 mt-1.5 flex justify-between text-sm font-bold">
+                                <div className="border-t border-white/10 pt-1.5 mt-1.5 flex justify-between text-sm font-bold">
                                   <span>Total</span>
                                   <span>
                                     {currency.symbol}
@@ -966,7 +966,7 @@ const ReceiptScanner = () => {
                                 <img
                                   src={imageUrl}
                                   alt="Receipt"
-                                  className="w-full rounded-lg border border-gray-200 object-contain max-h-48"
+                                  className="w-full rounded-lg border border-white/10 object-contain max-h-48"
                                 />
                                 <button
                                   onClick={() => setZoomImage(imageUrl)}
@@ -999,7 +999,7 @@ const ReceiptScanner = () => {
                                   setPreviewImage(imageUrl);
                                   setShowReview(true);
                                 }}
-                                className="w-full flex items-center justify-center gap-2 bg-yellow text-black font-medium px-4 py-2.5 rounded-xl border-2 border-black shadow-[2px_2px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[1px] hover:translate-y-[1px] transition-all text-sm"
+                                className="w-full flex items-center justify-center gap-2 bg-yellow text-white font-medium px-4 py-2.5 rounded-xl border-2 border-white/20 shadow-[2px_2px_0_0_#000] hover:shadow-[1px_1px_0_0_#000] hover:translate-x-[1px] hover:translate-y-[1px] transition-all text-sm"
                               >
                                 <Edit3 size={16} />
                                 Review & Confirm
@@ -1007,7 +1007,7 @@ const ReceiptScanner = () => {
                             )}
                             {receipt.status === "confirmed" &&
                               receipt.expense_id && (
-                                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                                <div className="flex items-center gap-2 text-sm text-emerald-400 bg-green-50 px-3 py-2 rounded-lg">
                                   <Check size={14} />
                                   Expense created
                                   <ArrowRight size={14} />

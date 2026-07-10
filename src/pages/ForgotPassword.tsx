@@ -41,26 +41,26 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="glass-card p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block">
-            <span className="font-serif text-2xl text-black">
+            <span className="font-serif text-2xl text-white">
               EX<span className="text-yellow">PENSO</span>
             </span>
           </Link>
           <h1 className="text-2xl font-serif mt-6">Reset your password</h1>
-          <p className="text-gray-600 text-sm mt-2">
+          <p className="text-gray-300 text-sm mt-2">
             Enter your email address and we'll send you a link to reset your password.
           </p>
         </div>
         
         {error && (
-          <div className="bg-red-50 text-red-500 p-3 rounded mb-4">
+          <div className="bg-red-500/10 text-red-400 p-3 rounded mb-4">
             {error}
             {error.includes('Account not found') && (
               <div className="mt-2">
-                <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-800 underline">
+                <Link to="/signup" className="font-medium text-sky-400 hover:text-sky-300 underline">
                   Create an account here
                 </Link>
               </div>
@@ -69,14 +69,14 @@ const ForgotPassword = () => {
         )}
 
         {success && (
-          <div className="bg-green-50 text-green-600 p-3 rounded mb-4">
+          <div className="bg-green-50 text-emerald-400 p-3 rounded mb-4">
             {success}
           </div>
         )}
 
         <form onSubmit={handleResetPassword} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-1">
               Email
             </label>
             <input
@@ -84,7 +84,7 @@ const ForgotPassword = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/15 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
               placeholder="your@email.com"
               required
             />
@@ -96,13 +96,13 @@ const ForgotPassword = () => {
         </form>
         
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-300">
             Remember your password?{' '}
             <Link to="/login" className="font-medium text-yellow hover:text-yellow-600">
               Back to Login
             </Link>
           </p>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-gray-300 mt-2">
             Don't have an account?{' '}
             <Link to="/signup" className="font-medium text-yellow hover:text-yellow-600">
               Sign up here

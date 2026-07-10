@@ -19,6 +19,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChatBot from "./components/chat/ChatBot";
 import MarketNews from "./pages/MarketNews";
+import UpiSync from "./pages/UpiSync";
+
 import NotFound from "./pages/NotFound";
 
 // Helper to reduce repetition
@@ -133,6 +135,14 @@ function App() {
             element={
               <PrivatePage>
                 <ReceiptScanner />
+              </PrivatePage>
+            }
+          />
+          <Route
+            path="/upi-sync"
+            element={
+              <PrivatePage>
+                <UpiSync />
               </PrivatePage>
             }
           />

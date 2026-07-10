@@ -13,6 +13,7 @@ import {
   Menu,
   AlertTriangle,
   Edit,
+  Zap,
 } from "lucide-react";
 import Button from "../components/common/Button";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -136,8 +137,7 @@ const Expenses = () => {
     `
       )
       .eq("user_id", user.id)
-      .eq("month", currentMonthFullDate) // Use full date here
-      .gt("spent", "amount");
+      .eq("month", currentMonthFullDate); // Use full date here
 
     if (error) {
       console.error("Error fetching exceeded budgets:", error);
@@ -145,11 +145,13 @@ const Expenses = () => {
     }
 
     setExceededBudgets(
-      budgets.map((budget) => ({
-        categoryName: budget.expense_categories.name,
-        amount: budget.amount,
-        spent: budget.spent,
-      }))
+      (budgets || [])
+        .filter((budget) => budget.spent > budget.amount)
+        .map((budget) => ({
+          categoryName: budget.expense_categories?.name ?? "Unknown",
+          amount: budget.amount,
+          spent: budget.spent,
+        }))
     );
   };
 
@@ -843,18 +845,18 @@ const Expenses = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {exceededBudgets.length > 0 && (
-        <div className="mb-8 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+        <div className="mb-8 bg-red-500/10 border-l-4 border-red-500 p-4 rounded">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-red-700">
+              <h3 className="text-lg font-semibold text-red-300">
                 Budget Alert
               </h3>
-              <p className="text-red-600">
+              <p className="text-red-400">
                 You have exceeded the budget for the following categories:
               </p>
               <ul className="mt-2 space-y-1">
                 {exceededBudgets.map((budget, index) => (
-                  <li key={index} className="text-red-600">
+                  <li key={index} className="text-red-400">
                     {budget.categoryName}: Spent {currency.symbol}
                     {budget.spent.toFixed(2)} of {currency.symbol}
                     {budget.amount.toFixed(2)}
@@ -864,7 +866,7 @@ const Expenses = () => {
             </div>
             <Link
               to="/budget"
-              className="bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200 transition-colors"
+              className="bg-red-500/15 text-red-300 px-4 py-2 rounded hover:bg-red-200 transition-colors"
             >
               Review Budget
             </Link>
@@ -878,14 +880,14 @@ const Expenses = () => {
             <div
               key={alert.id}
               className={`mb-4 p-4 rounded-lg flex items-center justify-between ${
-                alert.type === "exceeded" ? "bg-red-100" : "bg-yellow-100"
+                alert.type === "exceeded" ? "bg-red-500/15" : "bg-yellow-100"
               }`}
             >
               <div className="flex items-center">
                 <AlertTriangle
                   className={`w-5 h-5 ${
                     alert.type === "exceeded"
-                      ? "text-red-500"
+                      ? "text-red-400"
                       : "text-yellow-500"
                   } mr-2`}
                 />
@@ -905,7 +907,7 @@ const Expenses = () => {
                 </Button>
                 <button
                   onClick={() => acknowledgeAlert(alert.id)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-400 hover:text-gray-200"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -921,7 +923,7 @@ const Expenses = () => {
             <h1 className="text-3xl font-bold">Expenses</h1>
             <button
               onClick={() => setShowActionButtons(!showActionButtons)}
-              className="md:hidden bg-gray-100 p-2 rounded-lg"
+              className="md:hidden bg-white/10 p-2 rounded-lg"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -967,6 +969,14 @@ const Expenses = () => {
               Share
             </Button>
             <Button
+              onClick={() => navigate("/upi-sync")}
+              variant="outline"
+              className="w-full md:w-auto"
+            >
+              <Zap className="w-5 h-5 mr-2" />
+              UPI Sync
+            </Button>
+            <Button
               onClick={() => setIsAddingExpense(true)}
               variant="primary"
               className="w-full md:w-auto"
@@ -978,32 +988,32 @@ const Expenses = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">Total Income</h2>
-            <p className="text-3xl font-bold text-green-500">
+            <p className="text-3xl font-bold text-emerald-400">
               {currency.symbol}
               {effectiveIncome.toFixed(2)}
             </p>
-            <p className="text-sm text-gray-500">After leave deductions</p>
+            <p className="text-sm text-gray-400">After leave deductions</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">Total Expenses</h2>
-            <p className="text-3xl font-bold text-red-500">
+            <p className="text-3xl font-bold text-red-400">
               {currency.symbol}
               {calculateTotalExpenses().toFixed(2)}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">
               Income After Expenses
             </h2>
             <p
               className={`text-3xl font-bold ${
                 calculateIncomeAfterExpenses() >= 0
-                  ? "text-green-500"
-                  : "text-red-500"
+                  ? "text-emerald-400"
+                  : "text-red-400"
               }`}
             >
               {currency.symbol}
@@ -1014,8 +1024,8 @@ const Expenses = () => {
       </div>
 
       {isShareModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Share Report</h2>
             <div className="space-y-4">
               <Button
@@ -1085,7 +1095,7 @@ const Expenses = () => {
                   e.stopPropagation();
                   handleDeleteCategory(category.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 ml-1 hover:text-red-500 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 ml-1 hover:text-red-400 transition-opacity"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1095,8 +1105,8 @@ const Expenses = () => {
       </div>
 
       {isAddingCategory && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Add New Category</h2>
             <form onSubmit={handleAddCategory}>
               <div className="mb-4">
@@ -1122,7 +1132,7 @@ const Expenses = () => {
                       onClick={() => setNewCategory({ ...newCategory, color })}
                       className={`w-8 h-8 rounded-full border-2 ${
                         newCategory.color === color
-                          ? "border-black"
+                          ? "border-white/20"
                           : "border-transparent"
                       }`}
                       style={{ backgroundColor: color }}
@@ -1147,8 +1157,8 @@ const Expenses = () => {
       )}
 
       {isAddingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">
               {editingExpenseId ? "Edit Expense" : "Add New Expense"}
             </h2>
@@ -1254,8 +1264,8 @@ const Expenses = () => {
       )}
 
       {showBudgetAlert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Budget Alert</h2>
             <p className="mb-4">
               {budgetAlertType === "exceeded"
@@ -1268,7 +1278,7 @@ const Expenses = () => {
                   <Button
                     onClick={() => {
                       setShowBudgetAlert(false);
-                      handleAddExpense(new Event("submit") as any);
+                      handleAddOrUpdateExpense(new Event("submit") as any);
                     }}
                     variant="outline"
                   >
@@ -1300,7 +1310,7 @@ const Expenses = () => {
       {viewMode === "list" ? (
         <div className="space-y-4">
           {Array.from(groupExpensesByDate()).map(([date, dayExpenses]) => (
-            <div key={date} className="bg-white rounded-lg shadow p-4">
+            <div key={date} className="glass-card p-4">
               <h3 className="font-semibold mb-3">
                 {new Date(date).toLocaleDateString()}
               </h3>
@@ -1308,14 +1318,14 @@ const Expenses = () => {
                 {dayExpenses.map((expense: Expense) => (
                   <div
                     key={expense.id}
-                    className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-gray-50 rounded gap-3"
+                    className="flex flex-col md:flex-row md:items-center justify-between p-3 glass-inset gap-3"
                   >
                     <div>
                       <p className="font-medium">
                         {currency.symbol}
                         {expense.amount.toFixed(2)}
                       </p>
-                      <p className="text-gray-600">{expense.description}</p>
+                      <p className="text-gray-300">{expense.description}</p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {expense.categories.map((category) => (
                           <span
@@ -1334,13 +1344,13 @@ const Expenses = () => {
                     <div className="flex gap-2 justify-end">
                       <button
                         onClick={() => handleEditExpense(expense)}
-                        className="text-blue-500 hover:text-blue-600"
+                        className="text-sky-400 hover:text-sky-400"
                       >
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleDeleteExpense(expense.id)}
-                        className="text-red-500 hover:text-red-600"
+                        className="text-red-400 hover:text-red-400"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -1352,7 +1362,7 @@ const Expenses = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
+        <div className="glass-card p-4 overflow-x-auto">
           <div className="min-w-[768px]">
             <div className="grid grid-cols-7 gap-4">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
@@ -1374,20 +1384,20 @@ const Expenses = () => {
                   <div
                     key={i}
                     onClick={() => handleCalendarDayClick(dateStr)}
-                    className={`p-2 border rounded min-h-[80px] cursor-pointer hover:bg-gray-50 transition-colors ${
+                    className={`p-2 border rounded min-h-[80px] cursor-pointer hover:bg-white/5 transition-colors ${
                       dayExpenses.length > 0 ? "bg-yellow/10" : ""
                     }`}
                   >
-                    <div className="text-right text-sm text-gray-600">
+                    <div className="text-right text-sm text-gray-300">
                       {date.getDate()}
                     </div>
                     {dayExpenses.length > 0 && (
                       <div className="mt-2">
-                        <div className="text-sm font-medium text-black">
+                        <div className="text-sm font-medium text-white">
                           {currency.symbol}
                           {totalAmount.toFixed(2)}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-400">
                           {dayExpenses.length} expense
                           {dayExpenses.length !== 1 ? "s" : ""}
                         </div>

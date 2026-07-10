@@ -68,7 +68,7 @@ const ProfileUpload = ({ profileId, avatarUrl, onUploadComplete }: ProfileUpload
               className="w-24 h-24 rounded-full object-cover group-hover:opacity-75 transition-opacity"
             />
           ) : (
-            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center group-hover:bg-gray-300 transition-colors">
+            <div className="w-24 h-24 rounded-full bg-white/15 flex items-center justify-center group-hover:bg-white/20 transition-colors">
               <Camera className="w-8 h-8 text-gray-400" />
             </div>
           )}
@@ -76,7 +76,7 @@ const ProfileUpload = ({ profileId, avatarUrl, onUploadComplete }: ProfileUpload
             {uploading ? (
               <Loader className="w-8 h-8 text-white animate-spin" />
             ) : (
-              <div className="bg-black bg-opacity-50 rounded-full p-2">
+              <div className="bg-black/70 backdrop-blur-sm rounded-full p-2">
                 <Upload className="w-6 h-6 text-white" />
               </div>
             )}
@@ -91,8 +91,8 @@ const ProfileUpload = ({ profileId, avatarUrl, onUploadComplete }: ProfileUpload
         disabled={uploading}
         style={{ display: 'none' }}
       />
-      {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
-      <p className="text-sm text-gray-500 mt-2">Click to change avatar</p>
+      {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
+      <p className="text-sm text-gray-400 mt-2">Click to change avatar</p>
     </div>
   );
 };

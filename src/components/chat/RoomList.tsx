@@ -72,21 +72,21 @@ const RoomList = () => {
   );
 
   return (
-    <div className="w-full md:w-80 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
+    <div className="w-full md:w-80 bg-white/5 border-r border-white/10 flex flex-col h-full">
       {/* Header */}
-      <div className="p-3 md:p-4 border-b border-gray-200 bg-white">
+      <div className="p-3 md:p-4 border-b border-white/10 bg-[#16171d]">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">Chat Rooms</h2>
           <div className="flex items-center gap-2">
             <div
               className={`w-2 h-2 rounded-full ${
-                isConnected ? "bg-green-500" : "bg-red-500"
+                isConnected ? "bg-green-500" : "bg-red-500/100"
               }`}
               title={isConnected ? "Connected" : "Disconnected"}
             />
             <button
               onClick={() => setShowCreateModal(true)}
-              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              className="p-1 hover:bg-white/10 rounded transition-colors"
               title="Create Room"
             >
               <Plus className="w-5 h-5" />
@@ -102,17 +102,17 @@ const RoomList = () => {
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search rooms..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow text-sm"
           />
         </div>
 
         {/* Private Room Toggle */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Show Private Rooms</span>
+          <span className="text-sm text-gray-300">Show Private Rooms</span>
           <button
             onClick={() => setShowPrivateRooms(!showPrivateRooms)}
             className={`p-1 rounded transition-colors ${
-              showPrivateRooms ? "text-blue-600" : "text-gray-400"
+              showPrivateRooms ? "text-sky-400" : "text-gray-400"
             }`}
             title={
               showPrivateRooms ? "Hide private rooms" : "Show private rooms"
@@ -131,11 +131,11 @@ const RoomList = () => {
       <div className="flex-1 overflow-y-auto">
         {searchQuery ? (
           <div className="p-3 md:p-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">
+            <h3 className="text-sm font-medium text-gray-200 mb-3">
               Search Results {isSearching && "(searching...)"}
             </h3>
             {searchResults.length === 0 && !isSearching ? (
-              <p className="text-sm text-gray-500">No rooms found</p>
+              <p className="text-sm text-gray-400">No rooms found</p>
             ) : (
               <div className="space-y-2">
                 {searchResults.map((room) => (
@@ -157,7 +157,7 @@ const RoomList = () => {
             {/* Joined Rooms */}
             {joinedRoomsList.length > 0 && (
               <div className="p-3 md:p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-200 mb-3 flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   Your Rooms ({joinedRoomsList.length})
                 </h3>
@@ -179,7 +179,7 @@ const RoomList = () => {
             {/* Public Rooms */}
             {publicRoomsList.length > 0 && (
               <div className="p-3 md:p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-200 mb-3 flex items-center gap-2">
                   <Hash className="w-4 h-4" />
                   Public Rooms ({publicRoomsList.length})
                 </h3>
@@ -200,7 +200,7 @@ const RoomList = () => {
             {/* Private Rooms */}
             {showPrivateRooms && privateRoomsList.length > 0 && (
               <div className="p-3 md:p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-200 mb-3 flex items-center gap-2">
                   <Lock className="w-4 h-4" />
                   Private Rooms ({privateRoomsList.length})
                 </h3>
@@ -220,12 +220,12 @@ const RoomList = () => {
 
             {/* Empty State */}
             {displayRooms.length === 0 && (
-              <div className="p-6 text-center text-gray-500">
+              <div className="p-6 text-center text-gray-400">
                 <Hash className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p className="text-sm">No rooms available</p>
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                  className="mt-2 text-sky-400 hover:text-sky-300 text-sm"
                 >
                   Create the first room
                 </button>
@@ -266,8 +266,8 @@ const RoomItem = ({
     <div
       className={`p-2 md:p-3 rounded-lg cursor-pointer transition-all duration-200 relative group ${
         isActive
-          ? "bg-yellow text-black shadow-md"
-          : "hover:bg-white hover:shadow-sm"
+          ? "bg-yellow text-white shadow-md"
+          : "hover:bg-[#16171d] hover:shadow-sm"
       }`}
       onClick={onSelect}
       onMouseEnter={() => setShowActions(true)}
@@ -276,9 +276,9 @@ const RoomItem = ({
       <div className="flex items-center gap-2 md:gap-3">
         <div className="flex-shrink-0">
           {room.is_private ? (
-            <Lock className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+            <Lock className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
           ) : (
-            <Hash className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+            <Hash className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
           )}
         </div>
 
@@ -286,7 +286,7 @@ const RoomItem = ({
           <div className="flex items-center justify-between">
             <h4 className="font-medium text-sm truncate pr-2">{room.name}</h4>
             {room.member_count > 0 && (
-              <span className="text-xs text-gray-500 flex items-center gap-1 flex-shrink-0">
+              <span className="text-xs text-gray-400 flex items-center gap-1 flex-shrink-0">
                 <Users className="w-3 h-3" />
                 {room.member_count}
               </span>
@@ -294,13 +294,13 @@ const RoomItem = ({
           </div>
 
           {room.description && (
-            <p className="text-xs text-gray-600 truncate mt-1">
+            <p className="text-xs text-gray-300 truncate mt-1">
               {room.description}
             </p>
           )}
 
           {room.last_message && (
-            <p className="text-xs text-gray-500 truncate mt-1">
+            <p className="text-xs text-gray-400 truncate mt-1">
               <span className="font-medium">
                 {room.last_message.user.first_name}:
               </span>{" "}
@@ -319,7 +319,7 @@ const RoomItem = ({
                 e.stopPropagation();
                 onLeave?.();
               }}
-              className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
+              className="p-1 hover:bg-red-500/15 rounded text-red-400 transition-colors"
               title="Leave Room"
             >
               <Settings className="w-3 h-3" />
@@ -330,7 +330,7 @@ const RoomItem = ({
                 e.stopPropagation();
                 onJoin?.();
               }}
-              className="p-1 hover:bg-green-100 rounded text-green-600 transition-colors"
+              className="p-1 hover:bg-emerald-500/15 rounded text-emerald-400 transition-colors"
               title="Join Room"
             >
               <Plus className="w-3 h-3" />

@@ -1,32 +1,61 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, ChevronDown } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 import { useCurrency } from "../../contexts/CurrencyContext";
 
+interface NavItem {
+  name: string;
+  path: string;
+}
+
+const PRIMARY_ITEMS: NavItem[] = [
+  { name: "Dashboard", path: "/dashboard" },
+  { name: "Expenses", path: "/expenses" },
+  { name: "Income", path: "/income" },
+  { name: "Budget", path: "/budget" },
+  { name: "Reports", path: "/reports" },
+];
+
+const MORE_ITEMS: NavItem[] = [
+  { name: "UPI Sync", path: "/upi-sync" },
+  { name: "Jar System", path: "/jar-system" },
+  { name: "Market News", path: "/market" },
+  { name: "Social", path: "/social" },
+  { name: "Receipt Scan", path: "/receipt-scanner" },
+];
+
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { currency, setCurrency, availableCurrencies } = useCurrency();
+  const currencyRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
 
-  // Check if mobile on mount and resize
+  // Close dropdowns when clicking anywhere else
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      // Close mobile menu when switching to desktop
-      if (window.innerWidth >= 768) {
-        setIsMenuOpen(false);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (currencyRef.current && !currencyRef.current.contains(e.target as Node)) {
+        setIsCurrencyMenuOpen(false);
+      }
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setIsMoreMenuOpen(false);
       }
     };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Close menus on route change
+  useEffect(() => {
+    setIsMenuOpen(false);
+    setIsMoreMenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -48,86 +77,92 @@ const Navbar = () => {
     navigate("/");
   };
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+  const isActive = (path: string) => location.pathname === path;
+  const moreIsActive = MORE_ITEMS.some((item) => isActive(item.path));
 
-  const closeMenu = () => {
-    setIsMenuOpen(false);
-  };
-
-  const getNavItems = () => {
-    if (user) {
-      return [
-        { name: "DASHBOARD", path: "/dashboard" },
-        { name: "EXPENSES", path: "/expenses" },
-        { name: "INCOME", path: "/income" },
-        { name: "BUDGET", path: "/budget" },
-        { name: "JAR SYSTEM", path: "/jar-system" },
-        { name: "MARKET NEWS", path: "/market" },
-        { name: "SOCIAL", path: "/social" },
-        { name: "RECEIPT SCAN", path: "/receipt-scanner" },
-        { name: "REPORTS", path: "/reports" },
-      ];
-    }
-    return [{ name: "HOME", path: "/" }];
-  };
-
-  const navItems = getNavItems();
+  const linkClasses = (path: string) =>
+    `text-sm font-medium rounded-full px-3 py-1.5 transition-all whitespace-nowrap ${
+      isActive(path)
+        ? "bg-gradient-to-br from-[#ff3c02] to-[#fa7041] text-white shadow-md shadow-[#ff3c02]/30"
+        : "text-slate-200 hover:bg-white/10 hover:text-white"
+    }`;
 
   return (
     <>
-      {/* Mobile menu overlay - moved outside and with higher z-index */}
+      {/* Mobile menu overlay */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-25 z-30 md:hidden"
-          onClick={closeMenu}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setIsMenuOpen(false)}
         />
       )}
 
-      <header className="bg-yellow border-b-2 border-black sticky top-0 z-50">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0b]/70 backdrop-blur-xl">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center h-14 sm:h-16">
+          <div className="flex justify-between items-center h-16 gap-3">
             {/* Logo */}
-            <div className="flex items-center space-x-2 flex-shrink-0">
-              <Link to="/" className="flex items-center" onClick={closeMenu}>
-                <span className="font-serif text-lg sm:text-xl text-black">
-                  EX<span className="text-black">PENSO</span>
-                </span>
-              </Link>
-            </div>
+            <Link to="/" className="flex items-center flex-shrink-0" onClick={() => setIsMenuOpen(false)}>
+              <img src="/logo-full.png" alt="Expenso" className="h-8 w-auto" />
+            </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex space-x-4 xl:space-x-8 flex-1 justify-center">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  className={`text-xs xl:text-sm font-medium transition-colors relative whitespace-nowrap px-2 py-1 ${
-                    location.pathname === item.path
-                      ? 'text-black after:content-[""] after:absolute after:-bottom-1 after:left-0 after:w-full after:h-0.5 after:bg-black'
-                      : "text-black hover:text-gray-600"
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </nav>
+            {user && (
+              <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
+                {PRIMARY_ITEMS.map((item) => (
+                  <Link key={item.name} to={item.path} className={linkClasses(item.path)}>
+                    {item.name}
+                  </Link>
+                ))}
+
+                <div className="relative" ref={moreRef}>
+                  <button
+                    onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                    className={`text-sm font-medium rounded-full px-3 py-1.5 transition-all flex items-center gap-1 ${
+                      moreIsActive
+                        ? "bg-gradient-to-br from-[#ff3c02] to-[#fa7041] text-white shadow-md shadow-[#ff3c02]/30"
+                        : "text-slate-200 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    More
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform ${isMoreMenuOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {isMoreMenuOpen && (
+                    <div className="absolute left-0 mt-2 w-48 glass-modal py-2 z-50">
+                      {MORE_ITEMS.map((item) => (
+                        <Link
+                          key={item.name}
+                          to={item.path}
+                          onClick={() => setIsMoreMenuOpen(false)}
+                          className={`block px-4 py-2 text-sm transition-colors ${
+                            isActive(item.path)
+                              ? "text-white font-semibold bg-white/10"
+                              : "text-slate-200 hover:bg-white/10"
+                          }`}
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </nav>
+            )}
 
             {/* Desktop Actions */}
-            <div className="hidden md:flex items-center space-x-2 lg:space-x-4 flex-shrink-0">
+            <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
               {user && (
-                <div className="relative">
+                <div className="relative" ref={currencyRef}>
                   <button
                     onClick={() => setIsCurrencyMenuOpen(!isCurrencyMenuOpen)}
-                    className="text-xs lg:text-sm font-medium text-black hover:text-gray-600 transition-colors px-2 lg:px-3 py-2 rounded-md border border-black flex items-center gap-1 whitespace-nowrap"
+                    className="text-sm font-medium text-slate-200 hover:text-white transition-colors px-3 py-1.5 rounded-full glass-chip flex items-center gap-1"
                   >
-                    <span className="hidden lg:inline">{currency.code}</span>
-                    <span className="lg:hidden">{currency.symbol}</span>
+                    {currency.code}
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {isCurrencyMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-40 lg:w-48 bg-white rounded-md shadow-lg py-1 z-50 max-h-60 overflow-y-auto">
+                    <div className="absolute right-0 mt-2 w-48 glass-modal py-1 z-50 max-h-60 overflow-y-auto">
                       {availableCurrencies.map((curr) => (
                         <button
                           key={curr.code}
@@ -135,12 +170,10 @@ const Navbar = () => {
                             setCurrency(curr);
                             setIsCurrencyMenuOpen(false);
                           }}
-                          className="block w-full text-left px-4 py-2 text-xs lg:text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          className="block w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-white/10 transition-colors"
                         >
                           <span className="font-medium">{curr.code}</span>
-                          <span className="text-gray-500 ml-2">
-                            ({curr.symbol})
-                          </span>
+                          <span className="text-slate-400 ml-2">({curr.symbol})</span>
                         </button>
                       ))}
                     </div>
@@ -150,33 +183,33 @@ const Navbar = () => {
               {user ? (
                 <button
                   onClick={handleSignOut}
-                  className="text-xs lg:text-sm font-medium bg-black text-white px-3 lg:px-4 py-2 rounded hover:bg-gray-800 transition-colors whitespace-nowrap"
+                  className="text-sm font-semibold bg-white/10 text-white px-4 py-2 rounded-full hover:bg-white/15 transition-colors shadow-md"
                 >
-                  SIGN OUT
+                  Sign out
                 </button>
               ) : (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <Link
                     to="/login"
-                    className="text-xs lg:text-sm font-medium text-black hover:text-gray-600 transition-colors px-2"
+                    className="text-sm font-medium text-slate-200 hover:text-white transition-colors px-3 py-2"
                   >
-                    LOGIN
+                    Login
                   </Link>
                   <Link
                     to="/register"
-                    className="text-xs lg:text-sm font-medium bg-black text-white px-3 lg:px-4 py-2 rounded hover:bg-gray-800 transition-colors whitespace-nowrap"
+                    className="text-sm font-semibold bg-gradient-to-br from-yellow to-amber-400 text-white px-4 py-2 rounded-full shadow-md shadow-amber-400/40 hover:brightness-105 transition-all"
                   >
-                    SIGN UP
+                    Sign up
                   </Link>
                 </div>
               )}
             </div>
 
             {/* Mobile menu button */}
-            <div className="md:hidden flex items-center">
+            <div className="lg:hidden flex items-center">
               <button
-                onClick={toggleMenu}
-                className="text-black hover:text-gray-600 focus:outline-none p-2"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-slate-100 hover:text-white focus:outline-none p-2 rounded-xl glass-chip"
                 aria-label="Toggle menu"
               >
                 {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -186,37 +219,33 @@ const Navbar = () => {
 
           {/* Mobile Navigation */}
           <div
-            className={`md:hidden transition-all duration-300 ease-in-out relative z-40 bg-yellow ${
-              isMenuOpen
-                ? "max-h-screen opacity-100"
-                : "max-h-0 opacity-0 overflow-hidden"
+            className={`lg:hidden transition-all duration-300 ease-in-out relative z-40 ${
+              isMenuOpen ? "max-h-screen opacity-100 pb-6" : "max-h-0 opacity-0 overflow-hidden"
             }`}
           >
-            <div className="py-4 pb-6 space-y-4">
-              {/* Navigation Links */}
-              <div className="flex flex-col space-y-3">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.path}
-                    className={`text-sm font-medium transition-colors py-2 px-1 relative z-50 ${
-                      location.pathname === item.path
-                        ? "text-black font-bold border-l-4 border-black pl-3"
-                        : "text-black hover:text-gray-600"
-                    }`}
-                    onClick={closeMenu}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+            <div className="pt-2 space-y-4">
+              <div className="flex flex-col gap-1">
+                {(user ? [...PRIMARY_ITEMS, ...MORE_ITEMS] : [{ name: "Home", path: "/" }]).map(
+                  (item) => (
+                    <Link
+                      key={item.name}
+                      to={item.path}
+                      className={`text-sm font-medium transition-colors py-2.5 px-4 rounded-xl ${
+                        isActive(item.path)
+                          ? "bg-white/10 text-white shadow-md"
+                          : "text-slate-200 hover:bg-white/10"
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {item.name}
+                    </Link>
+                  )
+                )}
               </div>
 
-              {/* Currency Selector for Mobile */}
               {user && (
-                <div className="py-3 border-t border-gray-200 relative z-50">
-                  <p className="text-sm font-medium text-gray-600 mb-3">
-                    Select Currency
-                  </p>
+                <div className="pt-3 border-t border-white/60">
+                  <p className="text-sm font-medium text-slate-300 mb-2 px-1">Currency</p>
                   <select
                     value={currency.code}
                     onChange={(e) => {
@@ -225,7 +254,7 @@ const Navbar = () => {
                       );
                       if (newCurrency) setCurrency(newCurrency);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white"
+                    className="w-full px-3 py-2 text-sm"
                   >
                     {availableCurrencies.map((curr) => (
                       <option key={curr.code} value={curr.code}>
@@ -236,32 +265,31 @@ const Navbar = () => {
                 </div>
               )}
 
-              {/* Auth Actions for Mobile */}
-              <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200 relative z-50">
+              <div className="flex flex-col gap-2 pt-3 border-t border-white/60">
                 {user ? (
                   <button
                     onClick={handleSignOut}
-                    className="text-sm font-medium bg-black text-white px-4 py-3 rounded hover:bg-gray-800 transition-colors text-center"
+                    className="text-sm font-semibold bg-white/10 text-white px-4 py-3 rounded-xl hover:bg-white/15 transition-colors text-center shadow-md"
                   >
-                    SIGN OUT
+                    Sign out
                   </button>
                 ) : (
-                  <div className="flex flex-col space-y-3">
+                  <>
                     <Link
                       to="/login"
-                      className="text-sm font-medium text-black hover:text-gray-600 transition-colors py-2 text-center"
-                      onClick={closeMenu}
+                      className="text-sm font-medium text-slate-200 hover:text-white transition-colors py-2 text-center"
+                      onClick={() => setIsMenuOpen(false)}
                     >
-                      LOGIN
+                      Login
                     </Link>
                     <Link
                       to="/register"
-                      className="text-sm font-medium bg-black text-white px-4 py-3 rounded hover:bg-gray-800 transition-colors text-center"
-                      onClick={closeMenu}
+                      className="text-sm font-semibold bg-gradient-to-br from-yellow to-amber-400 text-white px-4 py-3 rounded-xl text-center shadow-md shadow-amber-400/40"
+                      onClick={() => setIsMenuOpen(false)}
                     >
-                      SIGN UP
+                      Sign up
                     </Link>
-                  </div>
+                  </>
                 )}
               </div>
             </div>

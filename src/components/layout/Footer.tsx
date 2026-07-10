@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 
 const Footer = () => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,7 +23,7 @@ const Footer = () => {
 
   const handleAccountClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
-    path: string
+    _path: string
   ) => {
     if (!user) {
       e.preventDefault();
@@ -31,13 +32,11 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-black text-white py-12">
+    <footer className="bg-[#0e0e11]/95 backdrop-blur-xl border-t border-white/10 text-white py-12">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-xl font-bold mb-4">
-              EX<span className="text-yellow">PENSO</span>
-            </h3>
+            <img src="/logo-full.png" alt="Expenso" className="h-8 w-auto mb-4" />
             <p className="text-gray-300 mb-4">
               Your personal finance tracker. Take control of your money and
               achieve your financial goals.
@@ -48,7 +47,7 @@ const Footer = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="w-8 h-8 flex items-center justify-center rounded-full border border-white text-white hover:bg-black hover:text-yellow transition-colors duration-300">
+                <div className="w-8 h-8 flex items-center justify-center rounded-full border border-white text-white hover:bg-white/15 hover:text-yellow transition-colors duration-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="currentColor"
@@ -66,7 +65,7 @@ const Footer = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="w-8 h-8 flex items-center justify-center rounded-full border border-white text-white hover:bg-black hover:text-yellow transition-colors duration-300">
+                <div className="w-8 h-8 flex items-center justify-center rounded-full border border-white text-white hover:bg-white/15 hover:text-yellow transition-colors duration-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="currentColor"
@@ -84,7 +83,7 @@ const Footer = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="w-8 h-8 flex items-center justify-center rounded-full border border-white text-white hover:bg-black hover:text-yellow transition-colors duration-300">
+                <div className="w-8 h-8 flex items-center justify-center rounded-full border border-white text-white hover:bg-white/15 hover:text-yellow transition-colors duration-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="currentColor"
@@ -180,9 +179,9 @@ const Footer = () => {
 
                   <li>
                     <Link
-                      to="/profile"
+                      to="/dashboard"
                       className="text-gray-300 hover:text-yellow transition-colors"
-                      onClick={(e) => handleAccountClick(e, "/profile")}
+                      onClick={(e) => handleAccountClick(e, "/dashboard")}
                     >
                       Profile Settings
                     </Link>

@@ -36,14 +36,14 @@ const CreateRoomModal = ({ onClose }: CreateRoomModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass-modal w-full max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-white/10">
           <h2 className="text-lg font-semibold">Create New Room</h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            className="p-1 hover:bg-white/10 rounded transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -52,7 +52,7 @@ const CreateRoomModal = ({ onClose }: CreateRoomModalProps) => {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Room Name *
             </label>
             <input
@@ -62,14 +62,14 @@ const CreateRoomModal = ({ onClose }: CreateRoomModalProps) => {
                 setFormData({ ...formData, name: e.target.value })
               }
               placeholder="Enter room name..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow"
+              className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow"
               required
               maxLength={50}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Description
             </label>
             <textarea
@@ -78,18 +78,18 @@ const CreateRoomModal = ({ onClose }: CreateRoomModalProps) => {
                 setFormData({ ...formData, description: e.target.value })
               }
               placeholder="What's this room about? (optional)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow resize-none"
+              className="w-full px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow resize-none"
               rows={3}
               maxLength={200}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-200 mb-3">
               Room Type
             </label>
             <div className="space-y-3">
-              <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <label className="flex items-center gap-3 p-3 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
                 <input
                   type="radio"
                   name="roomType"
@@ -100,17 +100,17 @@ const CreateRoomModal = ({ onClose }: CreateRoomModalProps) => {
                   className="text-yellow focus:ring-yellow"
                 />
                 <div className="flex items-center gap-2">
-                  <Hash className="w-5 h-5 text-gray-500" />
+                  <Hash className="w-5 h-5 text-gray-400" />
                   <div>
                     <div className="font-medium">Public Room</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-400">
                       Anyone can join and see messages
                     </div>
                   </div>
                 </div>
               </label>
 
-              <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <label className="flex items-center gap-3 p-3 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
                 <input
                   type="radio"
                   name="roomType"
@@ -119,10 +119,10 @@ const CreateRoomModal = ({ onClose }: CreateRoomModalProps) => {
                   className="text-yellow focus:ring-yellow"
                 />
                 <div className="flex items-center gap-2">
-                  <Lock className="w-5 h-5 text-gray-500" />
+                  <Lock className="w-5 h-5 text-gray-400" />
                   <div>
                     <div className="font-medium">Private Room</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-400">
                       Invite-only access
                     </div>
                   </div>

@@ -95,10 +95,10 @@ const ResetPassword = () => {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md text-center">
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="glass-card p-8 w-full max-w-md text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verifying reset link...</p>
+          <p className="mt-4 text-gray-300">Verifying reset link...</p>
         </div>
       </div>
     );
@@ -106,18 +106,18 @@ const ResetPassword = () => {
 
   if (!isValidSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="glass-card p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <Link to="/" className="inline-block">
-              <span className="font-serif text-2xl text-black">
+              <span className="font-serif text-2xl text-white">
                 EX<span className="text-yellow">PENSO</span>
               </span>
             </Link>
             <h1 className="text-2xl font-serif mt-6">Invalid Reset Link</h1>
           </div>
           
-          <div className="bg-red-50 text-red-500 p-3 rounded mb-4">
+          <div className="bg-red-500/10 text-red-400 p-3 rounded mb-4">
             {error}
           </div>
           
@@ -128,7 +128,7 @@ const ResetPassword = () => {
               </Button>
             </Link>
             
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-300">
               <Link to="/login" className="font-medium text-yellow hover:text-yellow-600">
                 Back to Login
               </Link>
@@ -140,35 +140,35 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="glass-card p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block">
-            <span className="font-serif text-2xl text-black">
+            <span className="font-serif text-2xl text-white">
               EX<span className="text-yellow">PENSO</span>
             </span>
           </Link>
           <h1 className="text-2xl font-serif mt-6">Set New Password</h1>
-          <p className="text-gray-600 text-sm mt-2">
+          <p className="text-gray-300 text-sm mt-2">
             Enter your new password below.
           </p>
         </div>
         
         {error && (
-          <div className="bg-red-50 text-red-500 p-3 rounded mb-4">
+          <div className="bg-red-500/10 text-red-400 p-3 rounded mb-4">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 text-green-600 p-3 rounded mb-4">
+          <div className="bg-green-50 text-emerald-400 p-3 rounded mb-4">
             {success}
           </div>
         )}
 
         <form onSubmit={handleResetPassword} className="space-y-6">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-200 mb-1">
               New Password
             </label>
             <input
@@ -176,16 +176,16 @@ const ResetPassword = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/15 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
               placeholder="••••••••"
               required
               minLength={6}
             />
-            <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters long</p>
+            <p className="text-xs text-gray-400 mt-1">Must be at least 6 characters long</p>
           </div>
           
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-200 mb-1">
               Confirm New Password
             </label>
             <input
@@ -193,7 +193,7 @@ const ResetPassword = () => {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/15 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
               placeholder="••••••••"
               required
               minLength={6}
@@ -211,7 +211,7 @@ const ResetPassword = () => {
         </form>
         
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-300">
             Remember your password?{' '}
             <Link to="/login" className="font-medium text-yellow hover:text-yellow-600">
               Back to Login

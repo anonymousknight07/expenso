@@ -22,6 +22,15 @@ import {
   Coffee,
   Meh,
   RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  PiggyBank,
+  Quote,
+  Zap,
+  ScanLine,
+  Receipt,
+  ChevronRight,
 } from "lucide-react";
 import Button from '../components/common/Button';
 import { Pie, Bar } from 'react-chartjs-2';
@@ -45,6 +54,49 @@ ChartJS.register(
   Legend,
   ArcElement
 );
+
+// Dark-theme chart defaults
+ChartJS.defaults.color = "#b3b3b3";
+ChartJS.defaults.borderColor = "rgba(255, 255, 255, 0.08)";
+
+// One quote per day — indexed by day of year so it rotates daily
+const SAVING_QUOTES: { text: string; author: string }[] = [
+  { text: "Do not save what is left after spending, but spend what is left after saving.", author: "Warren Buffett" },
+  { text: "A budget is telling your money where to go instead of wondering where it went.", author: "Dave Ramsey" },
+  { text: "Beware of little expenses; a small leak will sink a great ship.", author: "Benjamin Franklin" },
+  { text: "The habit of saving is itself an education; it fosters every virtue.", author: "T.T. Munger" },
+  { text: "It's not your salary that makes you rich, it's your spending habits.", author: "Charles A. Jaffe" },
+  { text: "Never spend your money before you have it.", author: "Thomas Jefferson" },
+  { text: "The art is not in making money, but in keeping it.", author: "Proverb" },
+  { text: "Wealth consists not in having great possessions, but in having few wants.", author: "Epictetus" },
+  { text: "Small amounts saved daily add up to huge investments in the end.", author: "Margo Vader" },
+  { text: "Money looks better in the bank than on your feet.", author: "Sophia Amoruso" },
+  { text: "Save money, and money will save you.", author: "Jamaican Proverb" },
+  { text: "He who buys what he does not need steals from himself.", author: "Swedish Proverb" },
+  { text: "The quickest way to double your money is to fold it and put it back in your pocket.", author: "Will Rogers" },
+  { text: "Financial freedom is available to those who learn about it and work for it.", author: "Robert Kiyosaki" },
+  { text: "Every time you borrow money, you're robbing your future self.", author: "Nathan W. Morris" },
+  { text: "A penny saved is a penny earned.", author: "Benjamin Franklin" },
+  { text: "Rich people stay rich by living like they're broke.", author: "Unknown" },
+  { text: "Don't tell me what you value. Show me your budget, and I'll tell you what you value.", author: "Joe Biden" },
+  { text: "You must gain control over your money or the lack of it will forever control you.", author: "Dave Ramsey" },
+  { text: "The goal isn't more money. The goal is living life on your terms.", author: "Chris Brogan" },
+  { text: "Spend not where you may save; spare not where you must spend.", author: "John Ray" },
+  { text: "Look everywhere you can to cut a little bit from your expenses. It will all add up.", author: "Suze Orman" },
+  { text: "If you buy things you do not need, soon you will have to sell things you need.", author: "Warren Buffett" },
+  { text: "Money grows on the tree of persistence.", author: "Japanese Proverb" },
+  { text: "It is thrifty to prepare today for the wants of tomorrow.", author: "Aesop" },
+  { text: "Try to save something while your salary is small; it's impossible to save after you begin to earn more.", author: "Jack Benny" },
+  { text: "Being in control of your finances is a great stress reliever.", author: "Unknown" },
+  { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+  { text: "Frugality includes all the other virtues.", author: "Cicero" },
+  { text: "Balancing your money is the key to having enough.", author: "Elizabeth Warren" },
+];
+
+const getDayOfYear = (d: Date) => {
+  const start = new Date(d.getFullYear(), 0, 0);
+  return Math.floor((d.getTime() - start.getTime()) / 86_400_000);
+};
 
 interface UserProfile {
   id: string;
@@ -92,6 +144,9 @@ const Dashboard = () => {
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [dailyExpenses, setDailyExpenses] = useState<any[]>([]);
   const [categoryExpenses, setCategoryExpenses] = useState<any[]>([]);
+  const [recentExpenses, setRecentExpenses] = useState<
+    { id: string; amount: number; description: string; date: string }[]
+  >([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
@@ -121,9 +176,18 @@ const Dashboard = () => {
   });
   const { currency } = useCurrency();
   const navigate = useNavigate();
+
+  const quoteOfTheDay =
+    SAVING_QUOTES[getDayOfYear(new Date()) % SAVING_QUOTES.length];
+  const hourNow = new Date().getHours();
+  const greeting =
+    hourNow < 12 ? "Good morning" : hourNow < 17 ? "Good afternoon" : "Good evening";
+  const balance = totalIncome - totalExpenses;
+  const savingsRate =
+    totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
   const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [currentUserRank, setCurrentUserRank] = useState(0);
+  const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
   const badges = [
     { id: 'first_transaction', icon: Star, title: 'First Transaction', description: 'Made your first transaction' },
     { id: 'budget_master', icon: Brain, title: 'Budget Master', description: 'Set up your first budget' },
@@ -138,7 +202,7 @@ const Dashboard = () => {
       label: "Happy",
       emoji: "😊",
       icon: Smile,
-      color: "bg-green-100 text-green-800",
+      color: "bg-emerald-500/15 text-emerald-300",
     },
     {
       id: "neutral",
@@ -152,46 +216,46 @@ const Dashboard = () => {
       label: "Sad",
       emoji: "😢",
       icon: Frown,
-      color: "bg-blue-100 text-blue-800",
+      color: "bg-sky-500/15 text-sky-300",
     },
     {
       id: "stressed",
       label: "Stressed",
       emoji: "😰",
-      color: "bg-red-100 text-red-800",
+      color: "bg-red-500/15 text-red-300",
     },
     {
       id: "excited",
       label: "Excited",
       emoji: "🤩",
-      color: "bg-purple-100 text-purple-800",
+      color: "bg-purple-500/15 text-purple-300",
     },
     {
       id: "tired",
       label: "Tired",
       emoji: "😴",
-      color: "bg-gray-100 text-gray-800",
+      color: "bg-white/10 text-gray-100",
     },
     {
       id: "Motivated",
       label: "Motivated",
       emoji: "💪",
       icon: Star,
-      color: "bg-red-100 text-red-800",
+      color: "bg-red-500/15 text-red-300",
     },
     {
       id: "Grateful",
       label: "Grateful",
       emoji: "🙏",
       icon: Heart,
-      color: "bg-pink-100 text-pink-800",
+      color: "bg-pink-500/15 text-pink-300",
     },
     {
       id: "Energetic",
       label: "Energetic",
       emoji: "⚡",
       icon: Coffee,
-      color: "bg-black-100 text-black-800",
+      color: "bg-black-100 text-white-800",
     },
   ];
 
@@ -257,6 +321,7 @@ const avatarCategories = {
 useEffect(() => {
   fetchProfile();
   fetchFinancialData();
+  fetchRecentExpenses();
   fetchGoals();
   fetchWishlist();
   fetchTodaysMood();
@@ -316,11 +381,24 @@ const fetchLeaderboard = async () => {
 
     if (data) {
       setProfile(data);
+      if (!data.avatar_url) {
+        setShowAvatarModal(true);
+      }
     }
-    if (!data.avatar_url) {
-  setShowAvatarModal(true);
-}
+  };
 
+  const fetchRecentExpenses = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("expenses")
+      .select("id, amount, description, date")
+      .eq("user_id", user.id)
+      .order("date", { ascending: false })
+      .limit(6);
+
+    setRecentExpenses(data || []);
   };
 
   const fetchFinancialData = async () => {
@@ -375,7 +453,13 @@ const fetchLeaderboard = async () => {
 
     
       const categoryExp = expensesData.reduce((acc, exp) => {
-        const category = exp.expense_category_mappings[0].expense_categories.name;
+        const mapping: any = Array.isArray(exp.expense_category_mappings)
+          ? exp.expense_category_mappings[0]
+          : exp.expense_category_mappings;
+        const cat = Array.isArray(mapping?.expense_categories)
+          ? mapping.expense_categories[0]
+          : mapping?.expense_categories;
+        const category = cat?.name ?? "Uncategorized";
         acc[category] = (acc[category] || 0) + exp.amount;
         return acc;
       }, {});
@@ -950,8 +1034,8 @@ useEffect(() => {
   return (
     <div className="container mx-auto px-4 py-8">
       {showBadgeNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-sm w-full mx-4 text-center">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-modal p-6 max-w-sm w-full mx-4 text-center">
             <Trophy className="w-16 h-16 text-yellow mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Achievement Unlocked!</h2>
             <p className="text-lg mb-4">{newBadge}</p>
@@ -983,85 +1067,89 @@ useEffect(() => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="relative">
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt="Avatar"
-                className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
-                onError={(e) => {
-                  e.currentTarget.src =
-                    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face";
-                }}
-              />
-            ) : (
-              <div
-                className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
-                onClick={() => setShowAvatarModal(true)}
-              >
-                <Camera className="w-8 h-8 text-gray-400" />
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowAvatarModal(true)}
-              className="absolute -bottom-1 -right-1 bg-yellow text-white rounded-full p-1 hover:bg-yellow-600 transition-colors"
-            >
-              <Camera className="w-3 h-3" />
-            </button>
-          </div>
-
-          {selectedAvatar && (
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
+      {/* Hero: greeting + daily savings quote */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="glass-card p-6 lg:col-span-2">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="relative flex-shrink-0">
+              {profile?.avatar_url ? (
                 <img
-                  src={selectedAvatar}
-                  alt="Selected Avatar Preview"
-                  className="w-12 h-12 rounded-full object-cover"
+                  src={profile.avatar_url}
+                  alt="Avatar"
+                  className="w-24 h-24 rounded-full object-cover border-2 border-yellow/40 ring-4 ring-yellow/10"
+                  onError={(e) => {
+                    e.currentTarget.src =
+                      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face";
+                  }}
                 />
-                <div>
-                  <p className="font-medium">Preview</p>
-                  <p className="text-sm text-gray-500">
-                    {avatarCategories[selectedAvatarCategory].name} Style
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold">
-              Welcome, {profile?.first_name || "User"}!
-            </h1>
-            <div className="mt-2 space-y-1">
-              <p className="text-gray-600">Level {profile?.level || 1}</p>
-              <div className="w-48 h-2 bg-gray-200 rounded-full">
+              ) : (
                 <div
-                  className="h-full bg-yellow rounded-full"
-                  style={{ width: `${(profile?.xp || 0) % 100}%` }}
-                ></div>
-              </div>
-              <p className="text-sm text-gray-500">{profile?.xp || 0} XP</p>
-              {profile?.occupation && (
-                <p className="text-sm text-gray-600">{profile.occupation}</p>
+                  className="w-24 h-24 rounded-full bg-white/15 flex items-center justify-center cursor-pointer hover:bg-white/20 transition-colors"
+                  onClick={() => setShowAvatarModal(true)}
+                >
+                  <Camera className="w-8 h-8 text-gray-400" />
+                </div>
               )}
-              {profile?.bio && (
-                <p className="text-sm text-gray-600">{profile.bio}</p>
+
+              <button
+                onClick={() => setShowAvatarModal(true)}
+                className="absolute -bottom-1 -right-1 accent-gradient text-white rounded-full p-1.5 hover:brightness-110 transition-all shadow-md shadow-yellow/30"
+              >
+                <Camera className="w-3 h-3" />
+              </button>
+            </div>
+
+            <div className="flex-1 text-center sm:text-left">
+              <p className="text-sm text-gray-400">
+                {new Date().toLocaleDateString(undefined, {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </p>
+              <h1 className="text-2xl md:text-3xl font-bold mt-0.5">
+                {greeting}, {profile?.first_name || "there"}!
+              </h1>
+              <div className="mt-3 flex items-center gap-3 justify-center sm:justify-start">
+                <span className="glass-chip px-3 py-1 text-xs font-semibold text-yellow-300">
+                  Level {profile?.level || 1}
+                </span>
+                <div className="w-40 h-2 bg-white/15 rounded-full overflow-hidden">
+                  <div
+                    className="h-full accent-gradient rounded-full transition-all"
+                    style={{ width: `${(profile?.xp || 0) % 100}%` }}
+                  ></div>
+                </div>
+                <span className="text-xs text-gray-400">{profile?.xp || 0} XP</span>
+              </div>
+              {profile?.occupation && (
+                <p className="text-sm text-gray-300 mt-2">{profile.occupation}</p>
               )}
             </div>
           </div>
         </div>
+
+        {/* Quote of the day */}
+        <div className="glass-card p-6 relative overflow-hidden flex flex-col justify-center bg-gradient-to-br from-yellow/10 to-transparent">
+          <Quote className="absolute -top-3 -right-3 w-24 h-24 text-yellow/10 rotate-12" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-yellow-300 mb-2">
+            Thought for today
+          </p>
+          <p className="text-lg font-medium leading-snug text-white">
+            “{quoteOfTheDay.text}”
+          </p>
+          <p className="text-sm text-gray-400 mt-3">— {quoteOfTheDay.author}</p>
+        </div>
       </div>
       {/* Mood Tracker Section */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
+      <div className="glass-card p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">
           How's Your Spending Mood?
         </h2>
 
         <div className="flex flex-col md:flex-row gap-6">
           {/* Today's Mood */}
-          <div className="bg-gray-50 rounded-lg p-4 flex-1">
+          <div className="glass-inset p-4 flex-1">
             <div className="flex justify-between items-center mb-3">
               <h3 className="font-medium">Today's Mood</h3>
               <Button
@@ -1078,7 +1166,7 @@ useEffect(() => {
                 <div
                   className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
                     moodOptions.find((m) => m.id === userMood)?.color ||
-                    "bg-gray-200"
+                    "bg-white/15"
                   }`}
                 >
                   {moodOptions.find((m) => m.id === userMood)?.emoji}
@@ -1087,12 +1175,12 @@ useEffect(() => {
                   <p className="font-medium">
                     {moodOptions.find((m) => m.id === userMood)?.label}
                   </p>
-                  <p className="text-sm text-gray-500">Logged today</p>
+                  <p className="text-sm text-gray-400">Logged today</p>
                 </div>
               </div>
             ) : (
               <div className="text-center py-4">
-                <p className="text-gray-500 mb-2">No mood logged today</p>
+                <p className="text-gray-400 mb-2">No mood logged today</p>
                 <Button
                   onClick={() => setShowMoodModal(true)}
                   variant="primary"
@@ -1104,7 +1192,7 @@ useEffect(() => {
           </div>
 
           {/* Mood Statistics */}
-          <div className="bg-gray-50 rounded-lg p-4 flex-1">
+          <div className="glass-inset p-4 flex-1">
             <h3 className="font-medium mb-3">Mood Insights (Last 30 Days)</h3>
             <div className="space-y-2">
               {moodStats
@@ -1119,21 +1207,21 @@ useEffect(() => {
                       </span>
                     </div>
                     <div className="flex-1 ml-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-white/15 rounded-full h-2">
                         <div
                           className="h-2 rounded-full bg-blue-500"
                           style={{ width: `${stat.percentage}%` }}
                         ></div>
                       </div>
                     </div>
-                    <div className="w-10 text-right text-sm text-gray-500">
+                    <div className="w-10 text-right text-sm text-gray-400">
                       {stat.count}
                     </div>
                   </div>
                 ))}
 
               {moodStats.filter((s) => s.count > 0).length === 0 && (
-                <p className="text-gray-500 text-center py-2">
+                <p className="text-gray-400 text-center py-2">
                   No mood data available
                 </p>
               )}
@@ -1142,7 +1230,7 @@ useEffect(() => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
+      <div className="glass-card p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Your Achievements</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {badges.map((badge) => {
@@ -1153,7 +1241,7 @@ useEffect(() => {
                 className={`p-4 rounded-lg border text-center ${
                   achieved
                     ? "bg-yellow/10 border-yellow"
-                    : "bg-gray-50 border-gray-200"
+                    : "bg-white/5 border-white/10"
                 }`}
               >
                 <badge.icon
@@ -1162,7 +1250,7 @@ useEffect(() => {
                   }`}
                 />
                 <h3 className="font-medium text-sm">{badge.title}</h3>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   {badge.description}
                 </p>
                 {achieved && (
@@ -1184,47 +1272,167 @@ useEffect(() => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-2">Monthly Income</h2>
-          <p className="text-3xl font-bold text-green-500">
+      {/* This month at a glance */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        <div className="glass-card p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
+            </span>
+            <h2 className="text-sm font-medium text-gray-300">Income</h2>
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-white">
             {currency.symbol}
             {totalIncome.toFixed(2)}
           </p>
+          <p className="text-xs text-gray-400 mt-1">this month</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-2">Monthly Expenses</h2>
-          <p className="text-3xl font-bold text-red-500">
+
+        <div className="glass-card p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center">
+              <TrendingDown className="w-5 h-5 text-red-400" />
+            </span>
+            <h2 className="text-sm font-medium text-gray-300">Expenses</h2>
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-white">
             {currency.symbol}
             {totalExpenses.toFixed(2)}
           </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-2">Balance</h2>
-          <p className="text-3xl font-bold text-blue-500">
-            {currency.symbol}
-            {(totalIncome - totalExpenses).toFixed(2)}
+          <p className="text-xs text-gray-400 mt-1">
+            {totalIncome > 0
+              ? `${Math.min(999, Math.round((totalExpenses / totalIncome) * 100))}% of income`
+              : "this month"}
           </p>
+        </div>
+
+        <div className="glass-card p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="w-10 h-10 rounded-xl bg-sky-500/15 flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-sky-400" />
+            </span>
+            <h2 className="text-sm font-medium text-gray-300">Balance</h2>
+          </div>
+          <p
+            className={`text-2xl md:text-3xl font-bold ${
+              balance >= 0 ? "text-white" : "text-red-400"
+            }`}
+          >
+            {currency.symbol}
+            {balance.toFixed(2)}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">left to spend or save</p>
+        </div>
+
+        <div className="glass-card p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="w-10 h-10 rounded-xl bg-yellow/15 flex items-center justify-center">
+              <PiggyBank className="w-5 h-5 text-yellow-300" />
+            </span>
+            <h2 className="text-sm font-medium text-gray-300">Savings rate</h2>
+          </div>
+          <p
+            className={`text-2xl md:text-3xl font-bold ${
+              savingsRate >= 20
+                ? "text-emerald-400"
+                : savingsRate >= 0
+                ? "text-yellow-300"
+                : "text-red-400"
+            }`}
+          >
+            {savingsRate}%
+          </p>
+          <div className="w-full h-1.5 bg-white/15 rounded-full mt-2 overflow-hidden">
+            <div
+              className="h-full accent-gradient rounded-full"
+              style={{ width: `${Math.min(100, Math.max(0, savingsRate))}%` }}
+            ></div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: "Add Expense", icon: Plus, onClick: () => navigate("/expenses") },
+          { label: "UPI Sync", icon: Zap, onClick: () => navigate("/upi-sync") },
+          { label: "Scan Receipt", icon: ScanLine, onClick: () => navigate("/receipt-scanner") },
+          { label: "New Goal", icon: Target, onClick: () => setShowAddGoalModal(true) },
+        ].map((action) => (
+          <button
+            key={action.label}
+            onClick={action.onClick}
+            className="glass-inset p-4 flex items-center gap-3 hover:bg-white/10 hover:border-yellow/40 transition-all group"
+          >
+            <span className="w-9 h-9 rounded-xl accent-gradient flex items-center justify-center shadow-md shadow-yellow/25 group-hover:scale-110 transition-transform">
+              <action.icon className="w-4 h-4 text-white" />
+            </span>
+            <span className="text-sm font-semibold text-white">{action.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Charts + recent activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="glass-card p-6">
           <h2 className="text-lg font-semibold mb-4">Expense Categories</h2>
           <div className="h-64">
             <Pie data={pieChartData} options={chartOptions} />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-card p-6">
           <h2 className="text-lg font-semibold mb-4">Daily Expenses</h2>
           <div className="h-64">
             <Bar data={barChartData} options={chartOptions} />
           </div>
         </div>
+        <div className="glass-card p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recent Activity</h2>
+            <button
+              onClick={() => navigate("/expenses")}
+              className="text-xs font-medium text-yellow-300 hover:text-yellow-200 flex items-center gap-0.5 transition-colors"
+            >
+              View all <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {recentExpenses.length > 0 ? (
+            <div className="space-y-3 flex-1">
+              {recentExpenses.map((exp) => (
+                <div key={exp.id} className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center flex-shrink-0">
+                    <Receipt className="w-4 h-4 text-red-400" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {exp.description || "Expense"}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(exp.date).toLocaleDateString(undefined, {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold text-red-400 whitespace-nowrap">
+                    −{currency.symbol}
+                    {exp.amount.toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+              <Receipt className="w-8 h-8 text-gray-500 mb-2" />
+              <p className="text-sm text-gray-400">No expenses yet</p>
+              <p className="text-xs text-gray-500">Add one to see it here</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-card p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Financial Goals</h2>
             <Button
@@ -1251,19 +1459,19 @@ useEffect(() => {
                     />
                     <div>
                       <h3 className="font-medium">{goal.title}</h3>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-400">
                         Due: {new Date(goal.deadline).toLocaleDateString()}
                       </span>
                     </div>
                   </div>
                   <button
                     onClick={() => handleDeleteGoal(goal.id)}
-                    className="text-red-500 hover:text-red-600"
+                    className="text-red-400 hover:text-red-400"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full mb-2">
+                <div className="w-full h-2 bg-white/15 rounded-full mb-2">
                   <div
                     className={`h-full rounded-full ${
                       goal.completed ? "bg-green-500" : "bg-blue-500"
@@ -1282,7 +1490,7 @@ useEffect(() => {
                     {currency.symbol}
                     {goal.current_amount}
                   </span>
-                  <span className="text-gray-500">
+                  <span className="text-gray-400">
                     of {currency.symbol}
                     {goal.target_amount}
                   </span>
@@ -1292,13 +1500,13 @@ useEffect(() => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-card p-6">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-lg font-semibold">
                 "Before You Buy" Wishlist
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-400">
                 Wait 48 hours before making a purchase decision
               </p>
             </div>
@@ -1329,14 +1537,14 @@ useEffect(() => {
                       {canBuyNow && (
                         <button
                           onClick={() => handleDeleteWishlistItem(item.id)}
-                          className="text-red-500 hover:text-red-600"
+                          className="text-red-400 hover:text-red-400"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   </div>
-                  <div className="text-sm text-gray-500 mb-2">
+                  <div className="text-sm text-gray-400 mb-2">
                     Added: {addedDate.toLocaleDateString()}
                   </div>
                   {!canBuyNow && (
@@ -1349,7 +1557,7 @@ useEffect(() => {
                     </div>
                   )}
                   {item.reflection && (
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-gray-300 mt-2">
                       Reflection: {item.reflection}
                     </p>
                   )}
@@ -1378,7 +1586,7 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* <div className="bg-white rounded-lg shadow p-6">
+      {/* <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold">Leaderboard</h2>
           <Crown className="w-6 h-6 text-yellow" />
@@ -1389,7 +1597,7 @@ useEffect(() => {
             alt="Coming Soon"
             className="w-32 h-32 object-cover rounded-lg mb-4 opacity-50"
           />
-          <p className="text-gray-500 font-medium">Coming Soon!</p>
+          <p className="text-gray-400 font-medium">Coming Soon!</p>
           <p className="text-sm text-gray-400">
             Compete with friends and earn rewards
           </p>
@@ -1397,8 +1605,8 @@ useEffect(() => {
       </div> */}
 
       {showAddGoalModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-modal p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-semibold mb-4">Add Financial Goal</h2>
             <form onSubmit={handleAddGoal} className="space-y-4">
               <div>
@@ -1460,10 +1668,10 @@ useEffect(() => {
       )}
 
       {showAddWishlistModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-modal p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-semibold mb-4">Add to Wishlist</h2>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-400 mb-4">
               Items added to the wishlist have a 48-hour cooling period before
               purchase. Use this time to reflect on whether you really need this
               item.
@@ -1535,7 +1743,7 @@ useEffect(() => {
           </div>
         </div>
       )}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold">Leaderboard</h2>
           <Crown className="w-6 h-6 text-yellow" />
@@ -1559,7 +1767,7 @@ useEffect(() => {
                     ? "bg-gray-400"
                     : index === 2
                     ? "bg-yellow-700"
-                    : "bg-gray-300"
+                    : "bg-white/20"
                 }`}
               >
                 {index + 1}
@@ -1587,21 +1795,21 @@ useEffect(() => {
                     </span>
                   )}
                 </h3>
-                <p className="text-xs text-gray-500">@{user.username}</p>
+                <p className="text-xs text-gray-400">@{user.username}</p>
               </div>
 
               <div className="text-right">
                 <p className="font-semibold">Lvl {user.level}</p>
-                <p className="text-sm text-gray-500">{user.xp} XP</p>
+                <p className="text-sm text-gray-400">{user.xp} XP</p>
               </div>
             </div>
           ))}
         </div>
 
         {currentUserRank && currentUserRank > 10 && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="mt-4 pt-4 border-t border-white/10">
             <div className="flex items-center gap-4 p-3">
-              <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 font-bold">
+              <span className="w-8 h-8 flex items-center justify-center rounded-full bg-white/15 font-bold">
                 {currentUserRank}
               </span>
 
@@ -1621,12 +1829,12 @@ useEffect(() => {
                     Your rank
                   </span>
                 </h3>
-                <p className="text-xs text-gray-500">@{profile?.username}</p>
+                <p className="text-xs text-gray-400">@{profile?.username}</p>
               </div>
 
               <div className="text-right">
                 <p className="font-semibold">Lvl {profile?.level || 1}</p>
-                <p className="text-sm text-gray-500">{profile?.xp || 0} XP</p>
+                <p className="text-sm text-gray-400">{profile?.xp || 0} XP</p>
               </div>
             </div>
           </div>
@@ -1646,19 +1854,19 @@ useEffect(() => {
 
       {/* Mood Selection Modal */}
       {showMoodModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-modal p-6 max-w-md w-full mx-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">How are you feeling?</h2>
               <button
                 onClick={() => setShowMoodModal(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-400 hover:text-gray-200"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-300 mb-6">
               Tracking your mood helps understand emotional spending patterns
             </p>
 
@@ -1670,7 +1878,7 @@ useEffect(() => {
                   className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
                     userMood === mood.id
                       ? "border-yellow-500 bg-yellow-50"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      : "border-white/10 hover:border-white/15 hover:bg-white/5"
                   }`}
                 >
                   <span className="text-3xl mb-2">{mood.emoji}</span>
@@ -1688,13 +1896,13 @@ useEffect(() => {
         </div>
       )}
       {showAvatarModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-modal p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Choose Your Avatar</h2>
               <button
                 onClick={() => setShowAvatarModal(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-400 hover:text-gray-200"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1709,7 +1917,7 @@ useEffect(() => {
                   className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
                     selectedAvatarCategory === key
                       ? "bg-yellow text-white border-b-2 border-yellow"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-white/10 text-gray-200 hover:bg-white/15"
                   }`}
                 >
                   {category.name}
@@ -1719,7 +1927,7 @@ useEffect(() => {
 
             {/* Preview Section */}
             {selectedAvatar && (
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="mb-4 p-4 glass-inset">
                 <div className="flex items-center gap-3">
                   <img
                     src={selectedAvatar}
@@ -1728,7 +1936,7 @@ useEffect(() => {
                   />
                   <div>
                     <p className="font-medium">Preview</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-400">
                       {avatarCategories[selectedAvatarCategory].name} Style
                     </p>
                   </div>
@@ -1749,7 +1957,7 @@ useEffect(() => {
                       className={`w-20 h-20 rounded-full object-cover cursor-pointer border-2 transition-all hover:scale-105 ${
                         selectedAvatar === avatar
                           ? "border-yellow-500 ring-2 ring-yellow-200"
-                          : "border-gray-200 hover:border-gray-300"
+                          : "border-white/10 hover:border-white/15"
                       }`}
                       onClick={() => setSelectedAvatar(avatar)}
                       onError={(e) => {
@@ -1758,7 +1966,7 @@ useEffect(() => {
                           "https://via.placeholder.com/150x150/cccccc/666666?text=Avatar";
                       }}
                     />
-                    <span className="text-xs text-gray-500 mt-1">
+                    <span className="text-xs text-gray-400 mt-1">
                       {avatarCategories[selectedAvatarCategory].name}{" "}
                       {index + 1}
                     </span>
@@ -1769,7 +1977,7 @@ useEffect(() => {
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-400">
                 Selected:{" "}
                 {selectedAvatar ? "Avatar chosen" : "No avatar selected"}
               </div>

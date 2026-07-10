@@ -752,11 +752,11 @@ const JarSystem = () => {
       {/* Full Jar Popup */}
       {fullJar && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full transform transition-all duration-500 scale-0 animate-scaleIn">
+          <div className="glass-modal p-6 max-w-md w-full transform transition-all duration-500 scale-0 animate-scaleIn">
             <div className="flex flex-col items-center text-center">
               <div className="text-6xl mb-4">🎉</div>
               <h3 className="text-2xl font-bold mb-2">Jar Full!</h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-300 mb-4">
                 Your <span className="font-bold">{fullJar.name}</span> jar has
                 reached its goal!
               </p>
@@ -764,7 +764,7 @@ const JarSystem = () => {
                 className="w-32 h-40 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden"
                 style={{ backgroundColor: fullJar.color }}
               >
-                <div className="absolute bottom-0 left-0 right-0 h-full bg-white bg-opacity-30" />
+                <div className="absolute bottom-0 left-0 right-0 h-full bg-[#16171d] bg-opacity-30" />
                 <div className="text-white font-bold text-xl">
                   {IconComponent(fullJar.icon)}
                 </div>
@@ -790,14 +790,14 @@ const JarSystem = () => {
                 <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-yellow flex-shrink-0" />
                 <span className="break-words">Visual Jar System</span>
               </h1>
-              <p className="text-gray-600 mt-2 text-sm sm:text-base">
+              <p className="text-gray-300 mt-2 text-sm sm:text-base">
                 Drag money into jars to allocate your income! 💰
               </p>
             </div>
 
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="sm:hidden bg-gray-100 p-2 rounded-lg"
+              className="sm:hidden bg-white/10 p-2 rounded-lg"
             >
               {showMobileMenu ? (
                 <X className="w-6 h-6" />
@@ -854,20 +854,29 @@ const JarSystem = () => {
         </div> */}
 
         {/* Money Denominations */}
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-          <h3 className="text-base sm:text-lg font-semibold mb-4">
-            Create Money to Allocate
-          </h3>
+        <div className="glass-card p-4 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 className="text-base sm:text-lg font-semibold">
+              Create Money to Allocate
+            </h3>
+            <div className="glass-chip px-4 py-1.5 flex items-center gap-2">
+              <span className="text-xs text-gray-400">Available</span>
+              <span className="text-sm font-bold text-emerald-400">
+                {currency.symbol}
+                {availableMoney.toFixed(2)}
+              </span>
+            </div>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
             {MONEY_DENOMINATIONS.map((amount) => (
               <button
                 key={amount}
                 onClick={() => createMoneyDrop(amount)}
                 disabled={availableMoney < amount}
-                className={`p-2 sm:p-4 rounded-lg border-2 border-dashed transition-all transform hover:scale-105 ${
+                className={`p-2 sm:p-4 rounded-xl border border-dashed transition-all transform hover:scale-105 ${
                   availableMoney >= amount
-                    ? "border-green-400 bg-green-50 hover:bg-green-100 text-green-700 cursor-pointer"
-                    : "border-gray-300 bg-gray-50 text-gray-400 cursor-not-allowed"
+                    ? "border-emerald-400/50 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 cursor-pointer shadow-sm"
+                    : "border-white/10 bg-white/[0.03] text-gray-500 cursor-not-allowed"
                 }`}
               >
                 <div className="text-sm sm:text-lg font-bold break-all">
@@ -883,7 +892,7 @@ const JarSystem = () => {
       {/* Main Jar Area */}
       <div
         ref={containerRef}
-        className={`relative bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-4 sm:p-8 border-2 border-dashed border-blue-200 overflow-hidden ${
+        className={`relative bg-gradient-to-br from-sky-500/10 to-purple-500/10 rounded-[20px] p-4 sm:p-8 border-2 border-dashed border-white/15 overflow-hidden ${
           isMobile ? "min-h-[400px]" : "min-h-[600px]"
         }`}
         style={{
@@ -900,7 +909,7 @@ const JarSystem = () => {
           clickToMoveMode && movingMoney ? handleMoneyDragEnd : undefined
         }
       >
-        <div className="text-center text-gray-500 mb-6 sm:mb-8">
+        <div className="text-center text-gray-400 mb-6 sm:mb-8">
           <h3 className="text-lg sm:text-xl font-semibold">Your Money Jars</h3>
           <p className="text-sm sm:text-base">
             {isMobile
@@ -949,8 +958,10 @@ const JarSystem = () => {
               onTouchEnd={(e) => handleTouchEnd(e, "jar", jar.id)}
             >
               <div
-                className={`relative ${jarSize} rounded-lg shadow-lg border-2 sm:border-4 border-white overflow-hidden transition-all duration-300`}
-                style={{ backgroundColor: jar.color }}
+                className={`relative ${jarSize} rounded-2xl shadow-xl shadow-black/40 border border-white/30 backdrop-blur-md overflow-hidden transition-all duration-300`}
+                style={{
+                  background: `linear-gradient(160deg, ${jar.color}e6 0%, ${jar.color}99 100%)`,
+                }}
               >
                 {/* Jar Content */}
                 <div className="p-2 sm:p-3 text-center">
@@ -966,7 +977,7 @@ const JarSystem = () => {
                 <div className="absolute bottom-0 left-0 right-0">
                   <div
                     className={`transition-all duration-500 ${
-                      isOverflowing ? "bg-yellow-300" : "bg-white bg-opacity-30"
+                      isOverflowing ? "bg-yellow-300" : "bg-[#16171d] bg-opacity-30"
                     }`}
                     style={{
                       height: `${Math.min(progress, 100)}%`,
@@ -979,7 +990,7 @@ const JarSystem = () => {
 
                 {/* Jar Amounts */}
                 <div className="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 right-1 sm:right-2 text-center">
-                  <div className="text-white text-xs font-bold bg-black bg-opacity-30 rounded px-1">
+                  <div className="text-white text-xs font-bold bg-black/40 backdrop-blur-sm rounded-md px-1 py-0.5">
                     {currency.symbol}
                     {jar.current_amount.toFixed(0)}
                   </div>
@@ -1006,7 +1017,7 @@ const JarSystem = () => {
                   }}
                   className={`absolute top-1 right-1 ${
                     isMobile ? "w-5 h-5" : "w-6 h-6"
-                  } bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors cursor-pointer z-30`}
+                  } bg-red-500/100 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors cursor-pointer z-30`}
                   style={{ cursor: "pointer !important" }}
                 >
                   <Trash2 className={`${isMobile ? "w-2 h-2" : "w-3 h-3"}`} />
@@ -1064,7 +1075,7 @@ const JarSystem = () => {
               onTouchEnd={(e) => handleTouchEnd(e, "money", money.id)}
             >
               <div
-                className={`${moneySize} rounded-full shadow-lg border-4 border-yellow-500 flex items-center justify-center bg-gradient-to-br from-yellow-300 to-yellow-500`}
+                className={`${moneySize} rounded-full border-2 border-white/40 flex items-center justify-center bg-gradient-to-br from-[#ffba86] to-[#ff3c02] shadow-lg shadow-[#ff3c02]/40`}
               >
                 <div className="text-white font-bold text-xs sm:text-sm text-center">
                   {currency.symbol}
@@ -1097,8 +1108,8 @@ const JarSystem = () => {
 
       {/* Add Jar Modal */}
       {isAddingJar && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-4 sm:p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg sm:text-xl font-bold mb-4">
               Create New Jar
             </h2>
@@ -1148,7 +1159,7 @@ const JarSystem = () => {
                         className={`p-2 sm:p-3 rounded border-2 flex items-center justify-center ${
                           newJar.icon === iconName
                             ? "border-yellow bg-yellow-50"
-                            : "border-gray-200 hover:border-gray-300"
+                            : "border-white/10 hover:border-white/15"
                         }`}
                       >
                         <Icon className="w-4 h-4 sm:w-6 sm:h-6" />
@@ -1166,10 +1177,10 @@ const JarSystem = () => {
                       key={color}
                       type="button"
                       onClick={() => setNewJar({ ...newJar, color })}
-                      className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 ${
+                      className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all ${
                         newJar.color === color
-                          ? "border-black"
-                          : "border-gray-300"
+                          ? "border-white ring-2 ring-yellow/60 scale-110"
+                          : "border-white/15 hover:scale-105"
                       }`}
                       style={{ backgroundColor: color }}
                     />

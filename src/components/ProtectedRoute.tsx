@@ -34,6 +34,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!authenticated) {
+    // A share arriving while logged out (Android share target) would be lost on
+    // redirect — stash it so UPI Sync can pick it up after login.
+    if (location.pathname === "/upi-sync" && location.search) {
+      localStorage.setItem("expenso_pending_share", location.search);
+    }
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 

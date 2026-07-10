@@ -7,7 +7,7 @@ const notFoundImage = "/404.png";
 
 const NotFound = () => {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="max-w-xl w-full text-center">
         {/* Illustration */}
         <div className="mb-8">
@@ -19,12 +19,12 @@ const NotFound = () => {
         </div>
 
         {/* Content Card */}
-        <div className="border-2 border-black rounded-2xl p-6 sm:p-8 shadow-[6px_6px_0_0_#000] bg-white">
-          <h2 className="font-serif text-2xl sm:text-3xl text-black mb-3">
+        <div className="border-2 border-white/20 rounded-2xl p-6 sm:p-8 shadow-[6px_6px_0_0_#000] bg-[#16171d]">
+          <h2 className="font-serif text-2xl sm:text-3xl text-white mb-3">
             Oops! Page not found.
           </h2>
 
-          <p className="text-gray-500 text-sm sm:text-base mb-6 leading-relaxed">
+          <p className="text-gray-400 text-sm sm:text-base mb-6 leading-relaxed">
             Looks like this expense slipped through the cracks. The page you're
             looking for doesn't exist or may have been moved.
           </p>
@@ -65,7 +65,7 @@ const NotFound = () => {
               <Link
                 key={link.path}
                 to={link.path}
-                className="px-3 py-1.5 text-xs font-medium border-2 border-gray-200 rounded-lg text-gray-500 hover:border-black hover:text-black transition-colors"
+                className="px-3 py-1.5 text-xs font-medium border-2 border-white/10 rounded-lg text-gray-400 hover:border-white/40 hover:text-white transition-colors"
               >
                 {link.name}
               </Link>

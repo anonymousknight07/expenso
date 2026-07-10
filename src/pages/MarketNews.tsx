@@ -129,13 +129,13 @@ const MarketNews = () => {
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
       {error && (
-        <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 flex items-center">
+        <div className="bg-red-500/10 text-red-300 p-3 rounded-lg mb-4 flex items-center">
           <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+      <div className="glass-card p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
@@ -145,7 +145,7 @@ const MarketNews = () => {
             <button
               onClick={fetchNews}
               disabled={loading}
-              className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/15 transition-colors disabled:opacity-50"
               title="Refresh news"
             >
               <RefreshCw
@@ -172,17 +172,17 @@ const MarketNews = () => {
                 key={i}
                 className="animate-pulse border rounded-lg overflow-hidden"
               >
-                <div className="h-32 sm:h-48 bg-gray-200" />
+                <div className="h-32 sm:h-48 bg-white/15" />
                 <div className="p-3 sm:p-4 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 rounded" />
-                  <div className="h-3 bg-gray-200 rounded w-5/6" />
+                  <div className="h-4 bg-white/15 rounded w-3/4" />
+                  <div className="h-3 bg-white/15 rounded" />
+                  <div className="h-3 bg-white/15 rounded w-5/6" />
                 </div>
               </div>
             ))}
           </div>
         ) : news.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">
+          <div className="text-center py-10 text-gray-400">
             <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p className="text-sm sm:text-base">
               No market news available at the moment
@@ -209,10 +209,10 @@ const MarketNews = () => {
                   <h3 className="font-semibold mb-2 line-clamp-2 text-sm sm:text-base">
                     {article.title}
                   </h3>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-3">
+                  <p className="text-xs sm:text-sm text-gray-300 mb-3 line-clamp-3">
                     {article.description}
                   </p>
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
                     <span className="truncate flex-1 mr-2">
                       {article.source}
                     </span>

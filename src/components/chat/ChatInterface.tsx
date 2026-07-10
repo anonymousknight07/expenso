@@ -20,7 +20,7 @@ const ChatInterfaceContent = () => {
   if (isMobile) {
     // Mobile: Show either room list or chat room, not both
     return (
-      <div className="flex h-[calc(100vh-4rem)] bg-white">
+      <div className="flex h-[calc(100vh-4rem)] bg-[#16171d]">
         {currentRoom ? <ChatRoom /> : <RoomList />}
       </div>
     );
@@ -28,7 +28,7 @@ const ChatInterfaceContent = () => {
 
   // Desktop: Show both side by side
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-white">
+    <div className="flex h-[calc(100vh-4rem)] bg-[#16171d]">
       <RoomList />
       <ChatRoom />
     </div>

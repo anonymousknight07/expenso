@@ -34,11 +34,11 @@ const Login = () => {
     }
   };
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="glass-card p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block">
-            <span className="font-serif text-2xl text-black">
+            <span className="font-serif text-2xl text-white">
               EX<span className="text-yellow">PENSO</span>
             </span>
           </Link>
@@ -46,14 +46,14 @@ const Login = () => {
         </div>
         
         {error && (
-          <div className="bg-red-50 text-red-500 p-3 rounded mb-4">
+          <div className="bg-red-500/10 text-red-400 p-3 rounded mb-4">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-1">
               Email
             </label>
             <input
@@ -61,14 +61,14 @@ const Login = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/15 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
               placeholder="your@email.com"
               required
             />
           </div>
           
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-200 mb-1">
               Password
             </label>
             <input
@@ -76,7 +76,7 @@ const Login = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/15 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow focus:border-transparent"
               placeholder="••••••••"
               required
             />
@@ -87,9 +87,9 @@ const Login = () => {
               <input
                 id="remember_me"
                 type="checkbox"
-                className="h-4 w-4 text-yellow focus:ring-yellow border-gray-300 rounded"
+                className="h-4 w-4 text-yellow focus:ring-yellow border-white/15 rounded"
               />
-              <label htmlFor="remember_me" className="ml-2 block text-sm text-gray-700">
+              <label htmlFor="remember_me" className="ml-2 block text-sm text-gray-200">
                 Remember me
               </label>
             </div>
@@ -107,7 +107,7 @@ const Login = () => {
         </form>
         
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-300">
             Don't have an account?{' '}
             <Link to="/register" className="font-medium text-yellow hover:text-yellow-600">
               Sign up

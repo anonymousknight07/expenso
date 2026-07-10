@@ -162,8 +162,8 @@ const ChatRoom = () => {
 
   if (!currentRoom) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <div className="text-center text-gray-500 p-6">
+      <div className="flex-1 flex items-center justify-center bg-white/5">
+        <div className="text-center text-gray-400 p-6">
           <div className="text-4xl md:text-6xl mb-4">💬</div>
           <h3 className="text-lg md:text-xl font-semibold mb-2">
             Select a chat room
@@ -177,16 +177,16 @@ const ChatRoom = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white h-full">
+    <div className="flex-1 flex flex-col bg-[#16171d] h-full">
       {/* Header */}
-      <div className="border-b border-gray-200 p-3 md:p-4 bg-white">
+      <div className="border-b border-white/10 p-3 md:p-4 bg-[#16171d]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Mobile back button */}
             {isMobile && (
               <button
                 onClick={() => setCurrentRoom(null)}
-                className="p-1 hover:bg-gray-100 rounded-lg transition-colors md:hidden"
+                className="p-1 hover:bg-white/10 rounded-lg transition-colors md:hidden"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -197,7 +197,7 @@ const ChatRoom = () => {
                 {currentRoom.name}
               </h2>
               {currentRoom.description && (
-                <p className="text-sm text-gray-500 truncate">
+                <p className="text-sm text-gray-400 truncate">
                   {currentRoom.description}
                 </p>
               )}
@@ -207,11 +207,11 @@ const ChatRoom = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSearch(!showSearch)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
               <Search className="w-4 h-4 md:w-5 md:h-5" />
             </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
               <MoreVertical className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
@@ -226,11 +226,11 @@ const ChatRoom = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Search messages..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow text-sm"
+              className="flex-1 px-3 py-2 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow text-sm"
             />
             <button
               onClick={handleSearch}
-              className="px-3 md:px-4 py-2 bg-yellow text-black rounded-lg hover:bg-yellow-600 transition-colors text-sm"
+              className="px-3 md:px-4 py-2 bg-yellow text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm"
             >
               Search
             </button>
@@ -242,7 +242,7 @@ const ChatRoom = () => {
       <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4">
         {showSearch && searchResults.length > 0 ? (
           <div className="space-y-2">
-            <h3 className="font-semibold text-gray-700 text-sm md:text-base">
+            <h3 className="font-semibold text-gray-200 text-sm md:text-base">
               Search Results
             </h3>
             {searchResults.map((message) => (
@@ -260,7 +260,7 @@ const ChatRoom = () => {
           Object.entries(messageGroups).map(([date, dayMessages]) => (
             <div key={date} className="space-y-2">
               <div className="flex items-center justify-center">
-                <div className="bg-gray-100 px-3 py-1 rounded-full text-xs text-gray-600">
+                <div className="bg-white/10 px-3 py-1 rounded-full text-xs text-gray-300">
                   {format(new Date(date), "MMMM dd, yyyy")}
                 </div>
               </div>
@@ -280,7 +280,7 @@ const ChatRoom = () => {
 
         {/* Typing Indicators */}
         {roomTypingUsers.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-gray-500 px-2">
+          <div className="flex items-center gap-2 text-sm text-gray-400 px-2">
             <div className="flex gap-1">
               <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
               <div
@@ -304,22 +304,22 @@ const ChatRoom = () => {
 
       {/* Reply Preview */}
       {replyTo && (
-        <div className="border-t border-gray-200 p-3 bg-gray-50">
+        <div className="border-t border-white/10 p-3 bg-white/5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Reply className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-600">
+              <Reply className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-300">
                 Replying to {replyTo.user.first_name}
               </span>
             </div>
             <button
               onClick={() => setReplyTo(null)}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-400 hover:text-gray-200"
             >
               ×
             </button>
           </div>
-          <p className="text-sm text-gray-700 mt-1 truncate">
+          <p className="text-sm text-gray-200 mt-1 truncate">
             {replyTo.content}
           </p>
         </div>
@@ -327,18 +327,18 @@ const ChatRoom = () => {
 
       {/* Edit Preview */}
       {editingMessage && (
-        <div className="border-t border-gray-200 p-3 bg-blue-50">
+        <div className="border-t border-white/10 p-3 bg-blue-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Edit className="w-4 h-4 text-blue-500" />
-              <span className="text-sm text-blue-600">Editing message</span>
+              <Edit className="w-4 h-4 text-sky-400" />
+              <span className="text-sm text-sky-400">Editing message</span>
             </div>
             <button
               onClick={() => {
                 setEditingMessage(null);
                 setMessageInput("");
               }}
-              className="text-blue-500 hover:text-blue-700"
+              className="text-sky-400 hover:text-blue-700"
             >
               ×
             </button>
@@ -347,7 +347,7 @@ const ChatRoom = () => {
       )}
 
       {/* Message Input */}
-      <div className="border-t border-gray-200 p-3 md:p-4 bg-white">
+      <div className="border-t border-white/10 p-3 md:p-4 bg-[#16171d]">
         <div className="flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea
@@ -356,7 +356,7 @@ const ChatRoom = () => {
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder="Type a message..."
-              className="w-full px-4 py-2 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow resize-none text-sm md:text-base"
+              className="w-full px-4 py-2 pr-20 border border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow resize-none text-sm md:text-base"
               rows={1}
               style={{
                 minHeight: "40px",
@@ -366,12 +366,12 @@ const ChatRoom = () => {
             <div className="absolute right-2 top-2 flex items-center gap-1">
               <button
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="p-1 hover:bg-white/10 rounded transition-colors"
               >
-                <Smile className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
+                <Smile className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
               </button>
-              <button className="p-1 hover:bg-gray-100 rounded transition-colors">
-                <Paperclip className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
+              <button className="p-1 hover:bg-white/10 rounded transition-colors">
+                <Paperclip className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
               </button>
             </div>
 
@@ -386,7 +386,7 @@ const ChatRoom = () => {
           <button
             onClick={handleSendMessage}
             disabled={!messageInput.trim()}
-            className="p-2 bg-yellow text-black rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            className="p-2 bg-yellow text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
           >
             <Send className="w-4 h-4 md:w-5 md:h-5" />
           </button>

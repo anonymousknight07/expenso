@@ -1,22 +1,108 @@
-@import url('https://fonts.googleapis.com/css2?family=Cal+Sans&family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Manrope:wght@200..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300..800;1,300..800&family=Manrope:wght@200..800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-yellow: #FFCC00;
-  --color-black: #000000;
-  --color-white: #FFFFFF;
+  /* CryptoX palette */
+  --color-yellow: #ff3c02;   /* primary accent (name kept for legacy utilities) */
+  --color-accent-soft: #fa7041;
+  --color-black: #0a0a0b;
+  --color-white: #ffffff;
 }
 
 @layer base {
   body {
-    @apply font-sans text-black bg-white;
+    @apply font-sans text-gray-200 min-h-screen bg-[#0a0a0b];
   }
-  
+
+  /* Fixed glow field behind the whole app — deep black with ember accents */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(55rem 40rem at 80% -10%, rgba(255, 60, 2, 0.16), transparent 60%),
+      radial-gradient(45rem 45rem at 5% 20%, rgba(250, 112, 65, 0.08), transparent 60%),
+      radial-gradient(50rem 50rem at 90% 85%, rgba(0, 130, 243, 0.07), transparent 60%),
+      radial-gradient(40rem 40rem at 20% 95%, rgba(255, 186, 134, 0.05), transparent 60%);
+  }
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif;
+    @apply font-sans font-semibold tracking-tight text-white;
+  }
+
+  /* Dark glassy form controls everywhere without touching each page */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    @apply rounded-xl border-white/10 bg-white/[0.06] text-white placeholder-gray-500 shadow-sm backdrop-blur-md transition-colors;
+    color-scheme: dark;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+  select:focus,
+  textarea:focus {
+    @apply outline-none border-yellow/60 ring-2 ring-yellow/30 bg-white/10;
+  }
+
+  select option {
+    background-color: #1c1d23;
+    color: #ffffff;
+  }
+
+  ::selection {
+    background: rgba(255, 60, 2, 0.45);
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.32);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* Primary surface: dark frosted card */
+  .glass-card {
+    @apply rounded-[20px] border border-white/10 bg-white/[0.045] shadow-xl shadow-black/30 backdrop-blur-xl;
+  }
+
+  /* Nested surface inside a glass card */
+  .glass-inset {
+    @apply rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-md;
+  }
+
+  /* Dialog surface: denser so content stays readable */
+  .glass-modal {
+    @apply rounded-[20px] border border-white/10 bg-[#1c1d23]/95 shadow-2xl shadow-black/60 backdrop-blur-2xl;
+  }
+
+  /* Chip / pill */
+  .glass-chip {
+    @apply rounded-full border border-white/10 bg-white/[0.07] backdrop-blur-md;
+  }
+
+  /* CryptoX-style accent gradient (CTAs, highlights) */
+  .accent-gradient {
+    @apply bg-gradient-to-br from-[#ff3c02] to-[#fa7041];
   }
 }
 
@@ -24,31 +110,32 @@
   .text-yellow {
     color: var(--color-yellow);
   }
-  
+
   .bg-yellow {
     background-color: var(--color-yellow);
   }
-  
+
   .border-yellow {
     border-color: var(--color-yellow);
   }
-  
+
   .hover\:text-yellow:hover {
-    color: var(--color-yellow);
+    color: var(--color-accent-soft);
   }
-  
+
   .hover\:bg-yellow:hover {
     background-color: var(--color-yellow);
   }
-  
+
   .hover\:border-yellow:hover {
     border-color: var(--color-yellow);
   }
-  
+
   .hover\:bg-yellow-600:hover {
-    background-color: #e6b800;
+    background-color: #f45b31;
   }
 }
+
 @keyframes fadeInOut {
   0% { opacity: 0; transform: translateY(20px); }
   10% { opacity: 1; transform: translateY(0); }

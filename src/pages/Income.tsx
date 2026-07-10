@@ -570,30 +570,30 @@ const Income = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">Total Income</h2>
-            <p className="text-3xl font-bold text-green-500">
+            <p className="text-3xl font-bold text-emerald-400">
               {currency.symbol}
               {calculateTotalIncome().toFixed(2)}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">Daily Pay</h2>
             <p className="text-3xl font-bold text-yellow-500">
               {currency.symbol}
               {getDailyPayForDisplay().toFixed(2)}
             </p>
-            <p className="text-gray-600">Per day earnings</p>
+            <p className="text-gray-300">Per day earnings</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card p-6">
             <h2 className="text-xl font-semibold mb-2">Salary After Leaves</h2>
-            <p className="text-3xl font-bold text-blue-500">
+            <p className="text-3xl font-bold text-sky-400">
               {currency.symbol}
               {calculateSalaryAfterLeaves().toFixed(2)}
             </p>
-            <p className="text-gray-600">
+            <p className="text-gray-300">
               {leaveCount} leave(s) taken ({currency.symbol}
               {(getDailyPayForDisplay() * leaveCount).toFixed(2)} deducted)
             </p>
@@ -602,8 +602,8 @@ const Income = () => {
       </div>
 
       {isAddingIncome && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Add New Income</h2>
             <form onSubmit={handleAddIncome} className="space-y-4">
               <div>
@@ -623,7 +623,7 @@ const Income = () => {
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-400 mt-1">
                   Daily pay will be: {currency.symbol}
                   {newIncome.in_hand_amount
                     ? (
@@ -716,8 +716,8 @@ const Income = () => {
       )}
 
       {isAddingHoliday && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Add Holiday</h2>
             <form onSubmit={handleAddHoliday} className="space-y-4">
               <div>
@@ -791,8 +791,8 @@ const Income = () => {
       )}
 
       {isShareModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Share Report</h2>
             <div className="space-y-4">
               <Button
@@ -822,8 +822,8 @@ const Income = () => {
       )}
 
       {isEditingIncome && selectedIncome && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Edit Income</h2>
             <form onSubmit={handleUpdateIncome} className="space-y-4">
               <div>
@@ -843,7 +843,7 @@ const Income = () => {
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-400 mt-1">
                   Daily pay will be: {currency.symbol}
                   {newIncome.in_hand_amount
                     ? (
@@ -941,7 +941,7 @@ const Income = () => {
       {viewMode === "list" ? (
         <div className="space-y-4">
           {incomes.map((income) => (
-            <div key={income.id} className="bg-white rounded-lg shadow p-4">
+            <div key={income.id} className="glass-card p-4">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -951,26 +951,26 @@ const Income = () => {
                         {(income.in_hand_amount || income.amount).toFixed(2)}
                       </span>
                     )}
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-400">
                       {new Date(income.date).toLocaleDateString()}
                     </span>
                   </div>
                   {!income.is_holiday && (
                     <>
-                      <p className="text-gray-600">{income.description}</p>
-                      <span className="inline-block bg-gray-100 px-2 py-1 rounded text-sm">
+                      <p className="text-gray-300">{income.description}</p>
+                      <span className="inline-block bg-white/10 px-2 py-1 rounded text-sm">
                         {income.category?.name}
                       </span>
                     </>
                   )}
                   {income.is_holiday && (
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-sm text-gray-400 mt-2">
                       {income.holiday_type === "leave"
                         ? "🏖️ Leave"
                         : "🎉 Festival"}
                       : {income.holiday_reason}
                       {income.holiday_type === "leave" && (
-                        <span className="text-red-500 ml-2">
+                        <span className="text-red-400 ml-2">
                           (Deduction: {currency.symbol}
                           {getDailyPayForDisplay().toFixed(2)})
                         </span>
@@ -982,14 +982,14 @@ const Income = () => {
                   {!income.is_holiday && (
                     <button
                       onClick={() => handleEditIncome(income)}
-                      className="text-blue-500 hover:text-blue-600"
+                      className="text-sky-400 hover:text-sky-400"
                     >
                       <Edit2 className="w-5 h-5" />
                     </button>
                   )}
                   <button
                     onClick={() => handleDeleteIncome(income.id)}
-                    className="text-red-500 hover:text-red-600"
+                    className="text-red-400 hover:text-red-400"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
@@ -999,7 +999,7 @@ const Income = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
+        <div className="glass-card p-4 overflow-x-auto">
           <div className="flex justify-between items-center mb-4">
             <button
               onClick={() => {
@@ -1007,7 +1007,7 @@ const Income = () => {
                 newDate.setMonth(newDate.getMonth() - 1);
                 setSelectedMonth(newDate);
               }}
-              className="p-2 hover:bg-gray-100 rounded"
+              className="p-2 hover:bg-white/10 rounded"
             >
               Previous Month
             </button>
@@ -1023,7 +1023,7 @@ const Income = () => {
                 newDate.setMonth(newDate.getMonth() + 1);
                 setSelectedMonth(newDate);
               }}
-              className="p-2 hover:bg-gray-100 rounded"
+              className="p-2 hover:bg-white/10 rounded"
             >
               Next Month
             </button>
@@ -1068,14 +1068,14 @@ const Income = () => {
                     p-2 border rounded min-h-[100px] cursor-pointer
                     ${
                       date.getMonth() === selectedMonth.getMonth()
-                        ? "bg-white"
-                        : "bg-gray-50"
+                        ? "bg-[#16171d]"
+                        : "bg-white/5"
                     }
                     ${isHoliday ? "border-red-200" : ""}
-                    hover:bg-gray-50 transition-colors
+                    hover:bg-white/5 transition-colors
                   `}
                 >
-                  <div className="text-right text-sm text-gray-600">
+                  <div className="text-right text-sm text-gray-300">
                     {date.getDate()}
                   </div>
                   {dayIncomes.length > 0 && (
@@ -1087,13 +1087,13 @@ const Income = () => {
                         </div>
                       )}
                       {dayIncomes.map((income) => (
-                        <div key={income.id} className="text-xs text-gray-500">
+                        <div key={income.id} className="text-xs text-gray-400">
                           {income.is_holiday ? (
                             <span
                               className={
                                 income.holiday_type === "leave"
-                                  ? "text-red-500"
-                                  : "text-green-500"
+                                  ? "text-red-400"
+                                  : "text-emerald-400"
                               }
                             >
                               {income.holiday_reason}

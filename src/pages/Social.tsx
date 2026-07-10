@@ -498,13 +498,13 @@ const formattedLeaderboard = data.map((profile) => ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "text-green-600 bg-green-100";
+        return "text-emerald-400 bg-emerald-500/15";
       case "completed":
-        return "text-blue-600 bg-blue-100";
+        return "text-sky-400 bg-sky-500/15";
       case "cancelled":
-        return "text-red-600 bg-red-100";
+        return "text-red-400 bg-red-500/15";
       default:
-        return "text-gray-600 bg-gray-100";
+        return "text-gray-300 bg-white/10";
     }
   };
 
@@ -784,7 +784,7 @@ const formattedLeaderboard = data.map((profile) => ({
               <Users className="w-8 h-8 text-yellow-500" />
               Social Hub
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-300 mt-2">
               Challenge friends, compete, and improve your financial knowledge!
             </p>
           </div>
@@ -869,8 +869,8 @@ const formattedLeaderboard = data.map((profile) => ({
               onClick={() => setActiveTab(id as any)}
               className={`flex items-center gap-2 px-3 py-2 rounded-t-lg transition-colors text-sm sm:text-base ${
                 activeTab === id
-                  ? "bg-yellow-500 text-black border-b-2 border-yellow-500"
-                  : "text-gray-600 hover:text-gray-800"
+                  ? "bg-yellow-500 text-white border-b-2 border-yellow-500"
+                  : "text-gray-300 hover:text-gray-100"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -898,7 +898,7 @@ const formattedLeaderboard = data.map((profile) => ({
               {challenges.map((challenge) => (
                 <div
                   key={challenge.id}
-                  className="bg-white rounded-lg shadow-lg p-4 sm:p-6 border-l-4 border-yellow-500 transition-transform hover:scale-[1.02]"
+                  className="glass-card p-4 sm:p-6 border-l-4 border-yellow-500 transition-transform hover:scale-[1.02]"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -914,14 +914,14 @@ const formattedLeaderboard = data.map((profile) => ({
                     </span>
                   </div>
 
-                  <p className="text-gray-600 text-sm mb-4">
+                  <p className="text-gray-300 text-sm mb-4">
                     {challenge.description}
                   </p>
 
                   <div className="space-y-2 mb-4">
                     {challenge.target_amount && (
                       <div className="flex items-center gap-2 text-sm">
-                        <IndianRupee className="w-4 h-4 text-green-500" />
+                        <IndianRupee className="w-4 h-4 text-emerald-400" />
                         <span>
                           Target: {currency.symbol}
                           {challenge.target_amount.toFixed(2)}
@@ -929,7 +929,7 @@ const formattedLeaderboard = data.map((profile) => ({
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-sm">
-                      <Clock className="w-4 h-4 text-blue-500" />
+                      <Clock className="w-4 h-4 text-sky-400" />
                       <span>{formatTimeRemaining(challenge.ends_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
@@ -944,13 +944,13 @@ const formattedLeaderboard = data.map((profile) => ({
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center">
                         <span className="text-xs font-bold">
                           {challenge.creator_profile.first_name[0]}
                           {challenge.creator_profile.last_name[0]}
                         </span>
                       </div>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-gray-300">
                         by {challenge.creator_profile.first_name}
                       </span>
                     </div>
@@ -958,12 +958,12 @@ const formattedLeaderboard = data.map((profile) => ({
                     {challenge.user_participation ? (
                       <div className="flex items-center gap-2">
                         {challenge.user_participation.completed ? (
-                          <span className="flex items-center gap-1 text-green-600 text-sm">
+                          <span className="flex items-center gap-1 text-emerald-400 text-sm">
                             <CheckCircle className="w-4 h-4" />
                             Completed
                           </span>
                         ) : (
-                          <div className="w-24 bg-gray-200 rounded-full h-2">
+                          <div className="w-24 bg-white/15 rounded-full h-2">
                             <div
                               className="bg-blue-600 h-2 rounded-full"
                               style={{
@@ -991,10 +991,10 @@ const formattedLeaderboard = data.map((profile) => ({
             {challenges.length === 0 && (
               <div className="text-center py-12">
                 <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                <h3 className="text-xl font-semibold text-gray-300 mb-2">
                   No challenges yet
                 </h3>
-                <p className="text-gray-500 mb-4">
+                <p className="text-gray-400 mb-4">
                   Be the first to create a financial challenge!
                 </p>
                 <Button
@@ -1013,7 +1013,7 @@ const formattedLeaderboard = data.map((profile) => ({
           <div className="space-y-6">
             <h2 className="text-2xl font-bold">Global Leaderboard</h2>
 
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="glass-card overflow-hidden">
               <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-4">
                 <h3 className="text-lg font-bold">Top Financial Champions</h3>
               </div>
@@ -1035,12 +1035,12 @@ const formattedLeaderboard = data.map((profile) => ({
                             ? "bg-gray-400 text-white"
                             : index === 2
                             ? "bg-orange-600 text-white"
-                            : "bg-gray-200 text-gray-600"
+                            : "bg-white/15 text-gray-300"
                         }`}
                       >
                         {index < 3 ? <Crown className="w-4 h-4" /> : index + 1}
                       </div>
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-white/15 rounded-full flex items-center justify-center">
                         <span className="font-bold">
                           {entry.profile.first_name[0]}
                           {entry.profile.last_name[0]}
@@ -1053,7 +1053,7 @@ const formattedLeaderboard = data.map((profile) => ({
                             <span className="text-yellow-600 ml-2">(You)</span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-300">
                           Level {entry.level} • {entry.challenges_completed}{" "}
                           challenges
                         </div>
@@ -1064,7 +1064,7 @@ const formattedLeaderboard = data.map((profile) => ({
                       <div className="font-bold text-lg">
                         {entry.total_xp.toLocaleString()} XP
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-300">
                         #{index + 1} globally
                       </div>
                     </div>
@@ -1094,12 +1094,12 @@ const formattedLeaderboard = data.map((profile) => ({
               {gameSuggestions.map((suggestion) => (
                 <div
                   key={suggestion.id}
-                  className="bg-white rounded-lg shadow p-4 sm:p-6 transition-transform hover:scale-[1.01]"
+                  className="glass-card p-4 sm:p-6 transition-transform hover:scale-[1.01]"
                 >
                   <div className="flex flex-col sm:flex-row items-start justify-between mb-3 gap-3">
                     <div className="flex-1">
                       <h3 className="font-bold text-lg">{suggestion.title}</h3>
-                      <p className="text-gray-600 mt-2 text-sm">
+                      <p className="text-gray-300 mt-2 text-sm">
                         {suggestion.description}
                       </p>
                     </div>
@@ -1110,8 +1110,8 @@ const formattedLeaderboard = data.map((profile) => ({
                         }
                         className={`p-2 rounded-full ${
                           suggestion.user_vote === true
-                            ? "bg-green-100 text-green-600"
-                            : "bg-gray-100 text-gray-600 hover:bg-green-50"
+                            ? "bg-emerald-500/15 text-emerald-400"
+                            : "bg-white/10 text-gray-300 hover:bg-green-50"
                         }`}
                       >
                         <TrendingUp className="w-4 h-4" />
@@ -1125,8 +1125,8 @@ const formattedLeaderboard = data.map((profile) => ({
                         }
                         className={`p-2 rounded-full ${
                           suggestion.user_vote === false
-                            ? "bg-red-100 text-red-600"
-                            : "bg-gray-100 text-gray-600 hover:bg-red-50"
+                            ? "bg-red-500/15 text-red-400"
+                            : "bg-white/10 text-gray-300 hover:bg-red-500/10"
                         }`}
                       >
                         <TrendingUp className="w-4 h-4 rotate-180" />
@@ -1134,7 +1134,7 @@ const formattedLeaderboard = data.map((profile) => ({
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm text-gray-500 gap-2">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm text-gray-400 gap-2">
                     <div>
                       Suggested by {suggestion.suggester_profile.first_name}{" "}
                       {suggestion.suggester_profile.last_name}
@@ -1150,10 +1150,10 @@ const formattedLeaderboard = data.map((profile) => ({
             {gameSuggestions.length === 0 && (
               <div className="text-center py-12">
                 <Lightbulb className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                <h3 className="text-xl font-semibold text-gray-300 mb-2">
                   No game suggestions yet
                 </h3>
-                <p className="text-gray-500 mb-4">
+                <p className="text-gray-400 mb-4">
                   Share your ideas for new financial games and challenges!
                 </p>
                 <Button
@@ -1178,7 +1178,7 @@ const formattedLeaderboard = data.map((profile) => ({
                 className={`px-4 py-2 rounded-lg ${
                   activeGame === "quiz"
                     ? "bg-blue-500 text-white"
-                    : "bg-gray-100 text-gray-700"
+                    : "bg-white/10 text-gray-200"
                 }`}
               >
                 Finance Quiz
@@ -1188,7 +1188,7 @@ const formattedLeaderboard = data.map((profile) => ({
                 className={`px-4 py-2 rounded-lg ${
                   activeGame === "coinflip"
                     ? "bg-blue-500 text-white"
-                    : "bg-gray-100 text-gray-700"
+                    : "bg-white/10 text-gray-200"
                 }`}
               >
                 Coin Flip
@@ -1198,7 +1198,7 @@ const formattedLeaderboard = data.map((profile) => ({
                 className={`px-4 py-2 rounded-lg ${
                   activeGame === "trivia"
                     ? "bg-blue-500 text-white"
-                    : "bg-gray-100 text-gray-700"
+                    : "bg-white/10 text-gray-200"
                 }`}
               >
                 Daily Trivia
@@ -1207,7 +1207,7 @@ const formattedLeaderboard = data.map((profile) => ({
 
             {/* Quiz Game */}
             {activeGame === "quiz" && (
-              <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="glass-card p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold">Financial Literacy Quiz</h3>
                   <div className="bg-yellow-100 px-3 py-1 rounded-full">
@@ -1223,7 +1223,7 @@ const formattedLeaderboard = data.map((profile) => ({
                   </div>
                 ) : quizQuestions.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-gray-300 mb-4">
                       Failed to load quiz questions
                     </p>
                     <Button onClick={generateQuestions}>Retry</Button>
@@ -1242,7 +1242,7 @@ const formattedLeaderboard = data.map((profile) => ({
                             <button
                               key={idx}
                               onClick={() => handleQuizAnswer(idx)}
-                              className="bg-gray-50 hover:bg-blue-50 border border-gray-200 rounded-lg p-4 text-left transition-colors"
+                              className="bg-white/5 hover:bg-blue-50 border border-white/10 rounded-lg p-4 text-left transition-colors"
                             >
                               {option}
                             </button>
@@ -1251,7 +1251,7 @@ const formattedLeaderboard = data.map((profile) => ({
                       </div>
                     </div>
 
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-400">
                       Test your financial knowledge. Each correct answer earns
                       you 10 XP!
                     </div>
@@ -1274,7 +1274,7 @@ const formattedLeaderboard = data.map((profile) => ({
 
             {/* Coin Flip Game */}
             {activeGame === "coinflip" && (
-              <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="glass-card p-6">
                 <h3 className="text-xl font-bold mb-6">Coin Flip Challenge</h3>
 
                 <div className="flex flex-col items-center">
@@ -1285,8 +1285,8 @@ const formattedLeaderboard = data.map((profile) => ({
                       coinResult === "heads"
                         ? "bg-yellow-400 text-yellow-800"
                         : coinResult === "tails"
-                        ? "bg-gray-400 text-gray-800"
-                        : "bg-blue-100 text-blue-800"
+                        ? "bg-gray-400 text-gray-100"
+                        : "bg-sky-500/15 text-sky-300"
                     }`}
                   >
                     {coinResult === "heads"
@@ -1310,11 +1310,11 @@ const formattedLeaderboard = data.map((profile) => ({
                         onChange={(e) => setBetAmount(parseInt(e.target.value))}
                         className="flex-1"
                       />
-                      <span className="bg-gray-100 px-3 py-1 rounded w-20 text-center">
+                      <span className="bg-white/10 px-3 py-1 rounded w-20 text-center">
                         {betAmount}
                       </span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <div className="flex justify-between text-xs text-gray-400 mt-1">
                       <span>5</span>
                       <span>100</span>
                     </div>
@@ -1333,7 +1333,7 @@ const formattedLeaderboard = data.map((profile) => ({
                     {betAmount * 2}
                   </Button>
 
-                  <div className="mt-6 text-sm text-gray-600 text-center">
+                  <div className="mt-6 text-sm text-gray-300 text-center">
                     <p>Double your money if you guess correctly!</p>
                     <p className="mt-2">
                       Current balance: {currency.symbol}1,250
@@ -1345,10 +1345,10 @@ const formattedLeaderboard = data.map((profile) => ({
 
             {/* Financial Trivia */}
             {activeGame === "trivia" && (
-              <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="glass-card p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold">Financial Trivia</h3>
-                  <div className="bg-green-100 px-3 py-1 rounded-full">
+                  <div className="bg-emerald-500/15 px-3 py-1 rounded-full">
                     Correct: <span className="font-bold">{triviaScore}</span>
                   </div>
                 </div>
@@ -1360,7 +1360,7 @@ const formattedLeaderboard = data.map((profile) => ({
                   </div>
                 ) : triviaQuestions.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-gray-300 mb-4">
                       Failed to load trivia questions
                     </p>
                     <Button onClick={generateQuestions}>Retry</Button>
@@ -1392,7 +1392,7 @@ const formattedLeaderboard = data.map((profile) => ({
                   </div>
                 )}
 
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-400">
                   <p>
                     Test your financial knowledge with daily trivia questions!
                   </p>
@@ -1428,27 +1428,27 @@ const formattedLeaderboard = data.map((profile) => ({
 
             {/* Chat Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-4 rounded-lg shadow text-center">
+              <div className="glass-card p-4 text-center">
                 <div className="flex items-center justify-center gap-1 mb-1">
-                  <MessageSquare className="w-4 h-4 text-blue-500" />
+                  <MessageSquare className="w-4 h-4 text-sky-400" />
                   <span className="font-medium">Messages</span>
                 </div>
-                <div className="text-xl font-bold text-blue-600">
+                <div className="text-xl font-bold text-sky-400">
                   {chatStats.totalMessages}
                 </div>
               </div>
 
-              <div className="bg-white p-4 rounded-lg shadow text-center">
+              <div className="glass-card p-4 text-center">
                 <div className="flex items-center justify-center gap-1 mb-1">
-                  <Users className="w-4 h-4 text-green-500" />
+                  <Users className="w-4 h-4 text-emerald-400" />
                   <span className="font-medium">Rooms</span>
                 </div>
-                <div className="text-xl font-bold text-green-600">
+                <div className="text-xl font-bold text-emerald-400">
                   {chatStats.roomsJoined}
                 </div>
               </div>
 
-              <div className="bg-white p-4 rounded-lg shadow text-center">
+              <div className="glass-card p-4 text-center">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <UserPlus className="w-4 h-4 text-purple-500" />
                   <span className="font-medium">Friends</span>
@@ -1458,7 +1458,7 @@ const formattedLeaderboard = data.map((profile) => ({
                 </div>
               </div>
 
-              <div className="bg-white p-4 rounded-lg shadow text-center">
+              <div className="glass-card p-4 text-center">
                 <div className="flex items-center justify-center gap-1 mb-1">
                   <Award className="w-4 h-4 text-yellow-500" />
                   <span className="font-medium">Rank</span>
@@ -1485,8 +1485,8 @@ const formattedLeaderboard = data.map((profile) => ({
 
       {/* Create Challenge Modal */}
       {isCreatingChallenge && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Create New Challenge</h2>
             <form onSubmit={handleCreateChallenge} className="space-y-4">
               <div>
@@ -1676,8 +1676,8 @@ const formattedLeaderboard = data.map((profile) => ({
 
       {/* Suggest Game Modal */}
       {isSuggestingGame && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Suggest New Game</h2>
             <form onSubmit={handleSuggestGame} className="space-y-4">
               <div>
@@ -1736,8 +1736,8 @@ const formattedLeaderboard = data.map((profile) => ({
 
       {/* Invite Modal */}
       {inviteModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Invite Friends</h2>
             <div className="space-y-4">
               <div>
@@ -1753,14 +1753,14 @@ const formattedLeaderboard = data.map((profile) => ({
                 />
               </div>
 
-              <div className="bg-gray-50 p-4 rounded">
+              <div className="bg-white/5 p-4 rounded">
                 <h3 className="font-semibold mb-2">Invite Link</h3>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={`${window.location.origin}/register?ref=${user?.id}`}
                     readOnly
-                    className="flex-1 px-3 py-2 border rounded bg-white text-sm"
+                    className="flex-1 px-3 py-2 border rounded bg-[#16171d] text-sm"
                   />
                   <Button
                     onClick={() => {

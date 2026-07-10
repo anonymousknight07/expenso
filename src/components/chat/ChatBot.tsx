@@ -59,12 +59,14 @@ const ChatBot = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // getSession returns null quietly when logged out (getUser throws)
         const {
-          data: { user },
+          data: { session },
           error,
-        } = await supabase.auth.getUser();
+        } = await supabase.auth.getSession();
+        const user = session?.user ?? null;
         if (error) {
-          console.error("Error fetching user:", error);
+          console.error("Error fetching session:", error);
           setIsLoggedIn(false);
         } else {
           setIsLoggedIn(!!user);
@@ -203,7 +205,7 @@ const ChatBot = () => {
   if (isCheckingAuth) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
-        <div className="bg-yellow text-black p-3 rounded-full shadow-lg">
+        <div className="bg-yellow text-white p-3 rounded-full shadow-lg">
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       </div>
@@ -213,19 +215,19 @@ const ChatBot = () => {
   return (
     <div className="fixed bottom-0 right-0 sm:bottom-4 sm:right-4 z-50">
       {isOpen ? (
-        <div className="bg-white flex flex-col h-[100vh] w-full sm:h-[500px] sm:w-[380px] sm:rounded-lg sm:shadow-xl">
+        <div className="bg-[#16171d] flex flex-col h-[100vh] w-full sm:h-[500px] sm:w-[380px] sm:rounded-lg sm:shadow-xl">
           {/* Header */}
           <div className="p-3 sm:p-4 bg-yellow sm:rounded-t-lg flex items-center gap-2 sm:gap-3">
             <img
               src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
               alt="AI Assistant"
-              className="w-8 h-8 rounded-full object-cover border-2 border-black"
+              className="w-8 h-8 rounded-full object-cover border-2 border-white/20"
             />
             <div className="flex-1">
-              <h3 className="font-semibold text-black text-sm sm:text-base">
+              <h3 className="font-semibold text-white text-sm sm:text-base">
                 Penny {!isLoggedIn && "(Limited Mode)"}
               </h3>
-              <p className="text-xs text-black opacity-75">
+              <p className="text-xs text-white opacity-75">
                 {isLoggedIn
                   ? "Always here to help!"
                   : "Please log in for full features"}
@@ -233,7 +235,7 @@ const ChatBot = () => {
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-black hover:text-gray-700 p-1"
+              className="text-white hover:text-gray-200 p-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -242,7 +244,7 @@ const ChatBot = () => {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
             {messages.length === 0 && (
-              <div className="text-center text-gray-500 py-6 sm:py-8">
+              <div className="text-center text-gray-400 py-6 sm:py-8">
                 <img
                   src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
                   alt="Welcome"
@@ -260,7 +262,7 @@ const ChatBot = () => {
                         <button
                           key={index}
                           onClick={(e) => handleSubmit(e, prompt)}
-                          className="w-full p-2 text-left hover:bg-gray-100 rounded-lg transition-colors text-xs sm:text-sm"
+                          className="w-full p-2 text-left hover:bg-white/10 rounded-lg transition-colors text-xs sm:text-sm"
                         >
                           {prompt}
                         </button>
@@ -278,7 +280,7 @@ const ChatBot = () => {
                         <button
                           key={index}
                           onClick={(e) => handleSubmit(e, prompt)}
-                          className="w-full p-2 text-left hover:bg-gray-100 rounded-lg transition-colors text-xs sm:text-sm"
+                          className="w-full p-2 text-left hover:bg-white/10 rounded-lg transition-colors text-xs sm:text-sm"
                         >
                           {prompt}
                         </button>
@@ -306,8 +308,8 @@ const ChatBot = () => {
                 <div
                   className={`max-w-[85%] rounded-lg p-2.5 sm:p-3 text-sm prose prose-sm max-w-none ${
                     message.role === "user"
-                      ? "bg-yellow text-black prose-invert"
-                      : "bg-gray-100 text-black"
+                      ? "bg-yellow text-white prose-invert"
+                      : "bg-white/10 text-white"
                   }`}
                 >
                   <ReactMarkdown>{message.content}</ReactMarkdown>
@@ -324,7 +326,7 @@ const ChatBot = () => {
 
             {messages.length > 0 && !isLoading && (
               <div className="mt-3 sm:mt-4">
-                <p className="text-xs sm:text-sm text-gray-500 mb-2">
+                <p className="text-xs sm:text-sm text-gray-400 mb-2">
                   Suggested questions:
                 </p>
                 <div className="space-y-1.5 sm:space-y-2">
@@ -332,7 +334,7 @@ const ChatBot = () => {
                     <button
                       key={index}
                       onClick={(e) => handleSubmit(e, question)}
-                      className="w-full p-2 text-left hover:bg-gray-100 rounded-lg transition-colors text-xs sm:text-sm"
+                      className="w-full p-2 text-left hover:bg-white/10 rounded-lg transition-colors text-xs sm:text-sm"
                     >
                       {question}
                     </button>
@@ -348,7 +350,7 @@ const ChatBot = () => {
                   alt="Assistant"
                   className="w-6 h-6 rounded-full object-cover"
                 />
-                <div className="bg-gray-100 rounded-lg p-2.5 sm:p-3">
+                <div className="bg-white/10 rounded-lg p-2.5 sm:p-3">
                   <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
               </div>
@@ -379,7 +381,7 @@ const ChatBot = () => {
               <button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="bg-yellow text-black px-3 sm:px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50"
+                className="bg-yellow text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50"
               >
                 <Send className="w-5 h-5" />
               </button>
@@ -394,13 +396,13 @@ const ChatBot = () => {
       ) : (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-yellow text-black p-3 sm:rounded-full shadow-lg hover:bg-yellow-600 relative"
+          className="bg-yellow text-white p-3 sm:rounded-full shadow-lg hover:bg-yellow-600 relative"
         >
           <MessageSquare className="w-6 h-6" />
           <img
             src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
             alt="Assistant"
-            className="w-4 h-4 rounded-full absolute -top-1 -right-1 border border-black"
+            className="w-4 h-4 rounded-full absolute -top-1 -right-1 border border-white/20"
           />
           {!isLoggedIn && (
             <div className="absolute -top-2 -left-2 w-3 h-3 bg-orange-500 rounded-full"></div>
