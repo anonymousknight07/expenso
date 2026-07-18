@@ -1,4 +1,5 @@
-![logo](https://github.com/user-attachments/assets/12751753-c071-41b6-9423-2116abfa024d)
+<img width="1020" height="286" alt="logo-full" src="https://github.com/user-attachments/assets/2a9b4f01-059b-494e-93d5-0219f1262aea" />
+
 
 #  Expenso - Smart Expense Tracker
 
