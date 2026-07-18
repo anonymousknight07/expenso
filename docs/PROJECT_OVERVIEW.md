@@ -117,30 +117,8 @@ If a future feature requires complex business logic that cannot be expressed wit
 ---
 
 ## Data Flow Diagram
-```mermaid
-flowchart TD
-    subgraph Browser
-        A[React UI] --> B[Supabase Client]
-        A --> C[WebSocket Manager]
-    end
-    subgraph Supabase
-        B --> D[PostgreSQL DB]
-        B --> E[Auth Service]
-    end
-    subgraph WS_Server
-        C --> F[Render Backend (WebSocket)]
-        F --> D
-    end
-    subgraph Vercel
-        G[Serverless /api/news] --> H[GNews API]
-        G --> I[Cache (CDN)]
-    end
-    A --> G
-    style Browser fill:#1e1e2f,color:#fff
-    style Supabase fill:#0a64a0,color:#fff
-    style WS_Server fill:#2c3e50,color:#fff
-    style Vercel fill:#6c3d2d,color:#fff
-```
+<img width="2340" height="1056" alt="mermaid-diagram (1)" src="https://github.com/user-attachments/assets/a5530a97-534a-42cb-a33c-d5cda940e17d" />
+
 
 ---
 
