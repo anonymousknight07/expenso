@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  RotateCcw,
 } from "lucide-react";
 import Button from "../components/common/Button";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -742,8 +743,31 @@ const Budget = () => {
     year: "numeric",
   });
 
-  const isCurrentSystemMonth =
-    selectedMonth === new Date().toISOString().slice(0, 7);
+  const currentSystemMonth = new Date().toISOString().slice(0, 7);
+
+  const getMonthPeriodStatus = (month: string) => {
+    if (month < currentSystemMonth) {
+      return {
+        label: "Past Month",
+        color: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+        isCurrent: false,
+      };
+    }
+    if (month > currentSystemMonth) {
+      return {
+        label: "Coming Month",
+        color: "bg-purple-500/10 text-purple-300 border-purple-500/30",
+        isCurrent: false,
+      };
+    }
+    return {
+      label: "Current Month",
+      color: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+      isCurrent: true,
+    };
+  };
+
+  const monthStatus = getMonthPeriodStatus(selectedMonth);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -759,38 +783,46 @@ const Budget = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => changeMonth(-1)}
-            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
-            title="Previous Month"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => {
-              if (e.target.value) setSelectedMonth(e.target.value);
-            }}
-            className="px-3 py-1.5 rounded-xl border border-white/10 bg-[#1c1d23] text-white text-sm font-semibold focus:border-yellow"
-          />
-
-          <button
-            onClick={() => changeMonth(1)}
-            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
-            title="Next Month"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
-          {!isCurrentSystemMonth && (
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => setSelectedMonth(new Date().toISOString().slice(0, 7))}
-              className="ml-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-yellow/10 text-yellow border border-yellow/20 hover:bg-yellow/20 transition-all"
+              onClick={() => changeMonth(-1)}
+              className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+              title="Previous Month"
             >
-              Current Month
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => {
+                if (e.target.value) setSelectedMonth(e.target.value);
+              }}
+              className="px-3 py-1.5 rounded-xl border border-white/10 bg-[#1c1d23] text-white text-sm font-semibold focus:border-yellow"
+            />
+
+            <button
+              onClick={() => changeMonth(1)}
+              className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+              title="Next Month"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border shadow-sm ${monthStatus.color}`}>
+            {monthStatus.label}
+          </span>
+
+          {!monthStatus.isCurrent && (
+            <button
+              onClick={() => setSelectedMonth(currentSystemMonth)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/10 text-gray-200 border border-white/10 transition-all flex items-center gap-1.5"
+              title="Switch to current system month"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-yellow" />
+              <span>Go to Current Month</span>
             </button>
           )}
         </div>
@@ -800,13 +832,16 @@ const Budget = () => {
       <div className="flex flex-col gap-6 mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-100 to-gray-400">
                 Budget Management
               </h1>
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow/10 text-yellow border border-yellow/20 flex items-center gap-1.5 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5" />
                 {formattedSelectedMonthName}
+              </span>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase border ${monthStatus.color}`}>
+                {monthStatus.label}
               </span>
             </div>
             <p className="text-gray-400 text-sm mt-1">

@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  RotateCcw,
 } from "lucide-react";
 import Button from "../components/common/Button";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -739,6 +740,39 @@ const Expenses = () => {
     }
   };
 
+  const currentSystemMonth = new Date().toISOString().slice(0, 7);
+
+  const getMonthPeriodStatus = (month: string) => {
+    if (month === "all") {
+      return {
+        label: "All Months",
+        color: "bg-blue-500/10 text-blue-300 border-blue-500/30",
+        isCurrent: false,
+      };
+    }
+    if (month < currentSystemMonth) {
+      return {
+        label: "Past Month",
+        color: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+        isCurrent: false,
+      };
+    }
+    if (month > currentSystemMonth) {
+      return {
+        label: "Coming Month",
+        color: "bg-purple-500/10 text-purple-300 border-purple-500/30",
+        isCurrent: false,
+      };
+    }
+    return {
+      label: "Current Month",
+      color: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+      isCurrent: true,
+    };
+  };
+
+  const monthStatus = getMonthPeriodStatus(selectedMonth);
+
   return (
     <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl">
       {/* Month Navigation Control Bar */}
@@ -785,6 +819,10 @@ const Expenses = () => {
             </button>
           </div>
 
+          <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border shadow-sm ${monthStatus.color}`}>
+            {monthStatus.label}
+          </span>
+
           <button
             onClick={() => setSelectedMonth("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
@@ -795,6 +833,17 @@ const Expenses = () => {
           >
             All Months
           </button>
+
+          {!monthStatus.isCurrent && selectedMonth !== "all" && (
+            <button
+              onClick={() => setSelectedMonth(currentSystemMonth)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/10 text-gray-200 border border-white/10 transition-all flex items-center gap-1.5"
+              title="Switch to current system month"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-yellow" />
+              <span>Go to Current Month</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -840,6 +889,9 @@ const Expenses = () => {
               Expense Tracking
               <span className="text-xs px-2.5 py-1 rounded-full bg-yellow/10 text-yellow border border-yellow/20 font-medium">
                 {selectedMonth === "all" ? "All Time" : selectedMonth}
+              </span>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase border ${monthStatus.color}`}>
+                {monthStatus.label}
               </span>
             </h1>
             <p className="text-gray-400 text-xs sm:text-sm mt-1">
@@ -1411,59 +1463,149 @@ const Expenses = () => {
         </div>
       ) : (
         <div className="glass-card p-4 sm:p-6 overflow-x-auto">
-          <p className="sm:hidden text-[11px] text-gray-400 mb-3 flex items-center gap-1">
-            💡 Scroll horizontally to view full calendar grid
-          </p>
-          <div className="min-w-[650px]">
-            <div className="grid grid-cols-7 gap-2 sm:gap-3 mb-3 text-center text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="py-1.5 sm:py-2 glass-inset">
-                  {day}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-2 sm:gap-3">
-              {Array.from({ length: 35 }, (_, i) => {
-                const date = new Date();
-                date.setDate(date.getDate() - date.getDay() + i);
-                const dateStr = date.toISOString().split("T")[0];
-                const dayExpenses = filterExpenses().filter(
-                  (e) => e.date === dateStr
-                );
-                const totalAmount = dayExpenses.reduce(
-                  (sum, exp) => sum + exp.amount,
-                  0
-                );
+          {(() => {
+            const activeMonthStr =
+              selectedMonth === "all"
+                ? new Date().toISOString().slice(0, 7)
+                : selectedMonth;
 
-                return (
-                  <div
-                    key={i}
-                    onClick={() => handleCalendarDayClick(dateStr)}
-                    className={`p-2 sm:p-3 rounded-2xl border min-h-[85px] sm:min-h-[95px] cursor-pointer hover:border-yellow/50 transition-all flex flex-col justify-between ${
-                      dayExpenses.length > 0
-                        ? "bg-gradient-to-b from-white/[0.08] to-white/[0.03] border-yellow/30"
-                        : "bg-white/[0.02] border-white/10"
-                    }`}
-                  >
-                    <div className="text-right text-xs font-bold text-gray-400">
-                      {date.getDate()}
-                    </div>
-                    {dayExpenses.length > 0 && (
-                      <div className="mt-1">
-                        <div className="text-[11px] sm:text-xs font-extrabold text-yellow">
-                          {currency.symbol}
-                          {totalAmount.toFixed(2)}
+            const [yearStr, monthStr] = activeMonthStr.split("-");
+            const year = parseInt(yearStr, 10);
+            const month = parseInt(monthStr, 10);
+
+            const firstDayObj = new Date(year, month - 1, 1);
+            const firstDayOfWeek = firstDayObj.getDay();
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const totalCells = firstDayOfWeek + daysInMonth > 35 ? 42 : 35;
+            const todayStr = new Date().toISOString().split("T")[0];
+
+            return (
+              <>
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-4 pb-3 border-b border-white/10 gap-3">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5 text-yellow" />
+                    <h2 className="text-base sm:text-lg font-bold text-white">
+                      {firstDayObj.toLocaleDateString("en-US", {
+                        month: "long",
+                        year: "numeric",
+                      })}{" "}
+                      Calendar
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow" />
+                      Active Month
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                      Other Month
+                    </span>
+                  </div>
+                </div>
+
+                <p className="sm:hidden text-[11px] text-gray-400 mb-3 flex items-center gap-1">
+                  💡 Scroll horizontally to view full calendar grid
+                </p>
+
+                <div className="min-w-[650px]">
+                  <div className="grid grid-cols-7 gap-2 sm:gap-3 mb-3 text-center text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                      (day) => (
+                        <div key={day} className="py-1.5 sm:py-2 glass-inset">
+                          {day}
                         </div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">
-                          {dayExpenses.length} rec
-                        </div>
-                      </div>
+                      )
                     )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
+
+                  <div className="grid grid-cols-7 gap-2 sm:gap-3">
+                    {Array.from({ length: totalCells }, (_, i) => {
+                      const date = new Date(year, month - 1, 1);
+                      date.setDate(i - firstDayOfWeek + 1);
+
+                      const cellYear = date.getFullYear();
+                      const cellMonthNum = date.getMonth() + 1;
+                      const cellDayNum = date.getDate();
+
+                      const dateStr = `${cellYear}-${String(
+                        cellMonthNum
+                      ).padStart(2, "0")}-${String(cellDayNum).padStart(
+                        2,
+                        "0"
+                      )}`;
+
+                      const isCurrentSelectedMonth =
+                        cellYear === year && cellMonthNum === month;
+                      const isToday = dateStr === todayStr;
+
+                      const dayExpenses = filterExpenses().filter(
+                        (e) => e.date === dateStr
+                      );
+                      const totalAmount = dayExpenses.reduce(
+                        (sum, exp) => sum + exp.amount,
+                        0
+                      );
+
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => handleCalendarDayClick(dateStr)}
+                          className={`p-2 sm:p-3 rounded-2xl border min-h-[85px] sm:min-h-[95px] cursor-pointer hover:border-yellow/60 transition-all flex flex-col justify-between ${
+                            !isCurrentSelectedMonth
+                              ? "opacity-30 bg-white/[0.01] border-white/5"
+                              : dayExpenses.length > 0
+                              ? "bg-gradient-to-b from-white/[0.08] to-white/[0.03] border-yellow/30 shadow-md"
+                              : isToday
+                              ? "bg-yellow/10 border-yellow/50"
+                              : "bg-white/[0.02] border-white/10"
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            {isToday && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-yellow text-black uppercase">
+                                Today
+                              </span>
+                            )}
+                            <span
+                              className={`text-xs font-bold ml-auto ${
+                                !isCurrentSelectedMonth
+                                  ? "text-gray-600"
+                                  : isToday
+                                  ? "text-yellow"
+                                  : "text-gray-300"
+                              }`}
+                            >
+                              {cellDayNum}
+                            </span>
+                          </div>
+
+                          {dayExpenses.length > 0 && (
+                            <div className="mt-1">
+                              <div
+                                className={`text-[11px] sm:text-xs font-extrabold ${
+                                  !isCurrentSelectedMonth
+                                    ? "text-yellow/50"
+                                    : "text-yellow"
+                                }`}
+                              >
+                                {currency.symbol}
+                                {totalAmount.toFixed(2)}
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">
+                                {dayExpenses.length} rec
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
