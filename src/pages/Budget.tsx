@@ -9,6 +9,19 @@ import {
   Bell,
   Edit2,
   X,
+  Wallet,
+  PiggyBank,
+  AlertTriangle,
+  RefreshCw,
+  PieChart,
+  Target,
+  ArrowUpRight,
+  ShieldAlert,
+  Sparkles,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import Button from "../components/common/Button";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -49,13 +62,6 @@ interface MonthlyBudget {
   created_at: string;
 }
 
-interface Expense {
-  id: string;
-  category_id: string;
-  amount: number;
-  date: string;
-}
-
 const Budget = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -69,12 +75,16 @@ const Budget = () => {
   const [isSettingMonthlyBudget, setIsSettingMonthlyBudget] = useState(false);
   const [isEditingMonthlyBudget, setIsEditingMonthlyBudget] = useState(false);
   const [monthlyBudgetAmount, setMonthlyBudgetAmount] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    new Date().toISOString().slice(0, 7)
+  );
   const { currency, calculateEffectiveIncome } = useCurrency();
 
   const [newBudget, setNewBudget] = useState({
     category_id: "",
     amount: "",
-    month: new Date().toISOString().slice(0, 7),
+    month: selectedMonth,
     notification_threshold: 0.75,
   });
 
@@ -84,10 +94,13 @@ const Budget = () => {
   };
 
   useEffect(() => {
-    fetchBudgets();
+    fetchBudgetsWithSpent();
+    fetchMonthlyBudget();
+  }, [selectedMonth]);
+
+  useEffect(() => {
     fetchCategories();
     fetchAlerts();
-    fetchMonthlyBudget();
     updateEffectiveIncome();
 
     const expensesChannel = supabase
@@ -99,8 +112,22 @@ const Budget = () => {
           schema: "public",
           table: "expenses",
         },
-        (payload) => {
-          console.log("Expense changed:", payload);
+        () => {
+          fetchBudgetsWithSpent();
+        }
+      )
+      .subscribe();
+
+    const mappingsChannel = supabase
+      .channel("mappings_channel")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "expense_category_mappings",
+        },
+        () => {
           fetchBudgetsWithSpent();
         }
       )
@@ -115,8 +142,7 @@ const Budget = () => {
           schema: "public",
           table: "budgets",
         },
-        (payload) => {
-          console.log("Budget changed:", payload);
+        () => {
           fetchBudgetsWithSpent();
         }
       )
@@ -131,23 +157,17 @@ const Budget = () => {
           schema: "public",
           table: "monthly_budgets",
         },
-        (payload) => {
-          console.log("Monthly budget changed:", payload);
+        () => {
           fetchMonthlyBudget();
         }
       )
       .subscribe();
 
-    const initialFetchTimer = setTimeout(() => {
-      console.log("Performing initial forced fetch");
-      fetchBudgetsWithSpent();
-    }, 1000);
-
     return () => {
       supabase.removeChannel(expensesChannel);
+      supabase.removeChannel(mappingsChannel);
       supabase.removeChannel(budgetsChannel);
       supabase.removeChannel(monthlyBudgetsChannel);
-      clearTimeout(initialFetchTimer);
     };
   }, []);
 
@@ -158,6 +178,13 @@ const Budget = () => {
     }
   }, [budgets, monthlyBudget]);
 
+  const changeMonth = (offset: number) => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const date = new Date(year, month - 1 + offset, 1);
+    const newMonthStr = date.toISOString().slice(0, 7);
+    setSelectedMonth(newMonthStr);
+  };
+
   const fetchMonthlyBudget = async () => {
     const {
       data: { user },
@@ -165,8 +192,7 @@ const Budget = () => {
 
     if (!user) return;
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const monthDate = `${currentMonth}-01`;
+    const monthDate = `${selectedMonth}-01`;
 
     const { data, error } = await supabase
       .from("monthly_budgets")
@@ -194,7 +220,6 @@ const Budget = () => {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Check if alert already exists
       const { data: existingAlerts } = await supabase
         .from("budget_alerts")
         .select("*")
@@ -212,9 +237,7 @@ const Budget = () => {
           },
         ]);
 
-        if (error) {
-          console.error("Error creating monthly budget alert:", error);
-        } else {
+        if (!error) {
           toast.error(
             `Category budgets exceed monthly budget by ${currency.symbol}${(
               totalCategoryBudgets - monthlyBudget.amount
@@ -236,8 +259,7 @@ const Budget = () => {
 
     if (!user) return;
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const monthDate = `${currentMonth}-01`;
+    const monthDate = `${selectedMonth}-01`;
 
     const { error } = await supabase.from("monthly_budgets").insert([
       {
@@ -256,7 +278,7 @@ const Budget = () => {
     setMonthlyBudgetAmount("");
     setIsSettingMonthlyBudget(false);
     fetchMonthlyBudget();
-    toast.success("Monthly budget set successfully");
+    toast.success(`Monthly budget for ${selectedMonth} set successfully`);
   };
 
   const handleUpdateMonthlyBudget = async (e: React.FormEvent) => {
@@ -306,22 +328,11 @@ const Budget = () => {
 
     if (!user) return;
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const startDate = `${currentMonth}-01`;
-    const endDate = new Date(
-      new Date(startDate).getFullYear(),
-      new Date(startDate).getMonth() + 1,
-      0
-    )
-      .toISOString()
-      .slice(0, 10);
-
-    console.log(
-      "Fetching budgets and expenses for date range:",
-      startDate,
-      "to",
-      endDate
-    );
+    const startDate = `${selectedMonth}-01`;
+    const [yearStr, monthStr] = selectedMonth.split("-");
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const endDate = new Date(year, month, 0).toISOString().slice(0, 10);
 
     const { data: budgetsData, error: budgetsError } = await supabase
       .from("budgets")
@@ -338,8 +349,6 @@ const Budget = () => {
       return;
     }
 
-    console.log("Fetched budgets:", budgetsData);
-
     if (!budgetsData || budgetsData.length === 0) {
       setBudgets([]);
       return;
@@ -347,14 +356,22 @@ const Budget = () => {
 
     const currentMonthBudgets = budgetsData.filter((budget) => {
       const budgetMonth = budget.month.substring(0, 7);
-      return budgetMonth === currentMonth;
+      return budgetMonth === selectedMonth;
     });
-
-    console.log("Current month budgets:", currentMonthBudgets);
 
     const { data: expensesData, error: expensesError } = await supabase
       .from("expenses")
-      .select("*")
+      .select(
+        `
+        id,
+        amount,
+        date,
+        category_id,
+        expense_category_mappings (
+          category_id
+        )
+      `
+      )
       .eq("user_id", user.id)
       .gte("date", startDate)
       .lte("date", endDate);
@@ -364,29 +381,26 @@ const Budget = () => {
       return;
     }
 
-    console.log("Fetched expenses for date range:", expensesData);
-
     const updatedBudgets = currentMonthBudgets.map((budget) => {
       const categoryExpenses =
-        expensesData?.filter(
-          (expense) => expense.category_id === budget.category_id
-        ) || [];
-
-      console.log(
-        `Expenses for category ${budget.category.name}:`,
-        categoryExpenses
-      );
+        expensesData?.filter((expense: any) => {
+          const mappingCategoryIds = (
+            expense.expense_category_mappings || []
+          ).map((m: any) => m.category_id);
+          return (
+            mappingCategoryIds.includes(budget.category_id) ||
+            expense.category_id === budget.category_id
+          );
+        }) || [];
 
       const spentAmount = categoryExpenses.reduce(
-        (total, expense) =>
+        (total: number, expense: any) =>
           total +
           (typeof expense.amount === "number"
             ? expense.amount
-            : parseFloat(expense.amount)),
+            : parseFloat(expense.amount) || 0),
         0
       );
-
-      console.log(`Total spent for ${budget.category.name}:`, spentAmount);
 
       return {
         ...budget,
@@ -394,12 +408,7 @@ const Budget = () => {
       };
     });
 
-    console.log("Updated budgets with spent amounts:", updatedBudgets);
     setBudgets(updatedBudgets);
-  };
-
-  const fetchBudgets = async () => {
-    fetchBudgetsWithSpent();
   };
 
   const fetchCategories = async () => {
@@ -453,7 +462,7 @@ const Budget = () => {
     if (!user) return;
 
     for (const budget of budgets) {
-      const spendRatio = budget.spent / budget.amount;
+      const spendRatio = budget.amount > 0 ? budget.spent / budget.amount : 0;
       const isExceeded = spendRatio > 1;
       const isApproaching =
         spendRatio >= budget.notification_threshold && spendRatio <= 1;
@@ -478,16 +487,13 @@ const Budget = () => {
             },
           ]);
 
-          if (error) {
-            console.error("Error creating budget alert:", error);
-          } else {
+          if (!error) {
             toast.error(
               `${
                 isExceeded ? "Budget exceeded" : "Approaching budget limit"
-              }: ${budget.category.name}`,
+              }: ${budget.category?.name || "Category"}`,
               { duration: 5000 }
             );
-
             fetchAlerts();
           }
         }
@@ -555,16 +561,21 @@ const Budget = () => {
 
     if (error) {
       console.error("Error adding budget:", error);
+      toast.error("Error creating budget");
       return;
     }
+
+    const createdMonth = newBudget.month.slice(0, 7);
+    setSelectedMonth(createdMonth);
 
     setNewBudget({
       category_id: "",
       amount: "",
-      month: new Date().toISOString().slice(0, 7),
+      month: createdMonth,
       notification_threshold: 0.75,
     });
     setIsAddingBudget(false);
+    toast.success(`Budget created for ${createdMonth}`);
     fetchBudgetsWithSpent();
   };
 
@@ -573,14 +584,20 @@ const Budget = () => {
 
     if (error) {
       console.error("Error deleting budget:", error);
+      toast.error("Failed to delete budget");
       return;
     }
 
-    fetchBudgets();
+    toast.success("Budget removed");
+    fetchBudgetsWithSpent();
   };
 
   const calculateTotalBudget = () => {
     return budgets.reduce((total, budget) => total + budget.amount, 0);
+  };
+
+  const calculateTotalSpent = () => {
+    return budgets.reduce((total, budget) => total + budget.spent, 0);
   };
 
   const calculateSavings = () => {
@@ -591,13 +608,13 @@ const Budget = () => {
     const workbook = XLSX.utils.book_new();
 
     const data = budgets.map((budget) => ({
-      Category: budget.category.name,
+      Category: budget.category?.name || "Uncategorized",
       "Budget Amount": `${currency.symbol}${budget.amount.toFixed(2)}`,
       "Spent Amount": `${currency.symbol}${budget.spent.toFixed(2)}`,
       Remaining: `${currency.symbol}${(budget.amount - budget.spent).toFixed(
         2
       )}`,
-      Progress: `${((budget.spent / budget.amount) * 100).toFixed(1)}%`,
+      Progress: `${((budget.spent / (budget.amount || 1)) * 100).toFixed(1)}%`,
       "Alert Threshold": `${(budget.notification_threshold * 100).toFixed(0)}%`,
     }));
 
@@ -622,15 +639,15 @@ const Budget = () => {
       { origin: -1 }
     );
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Budget Report");
-    XLSX.writeFile(workbook, "Budget.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Budget Report ${selectedMonth}`);
+    XLSX.writeFile(workbook, `Budget_${selectedMonth}.xlsx`);
   };
 
   const exportToPDF = () => {
     const doc = new jsPDF();
 
     doc.setFontSize(20);
-    doc.text("Budget Report", 20, 20);
+    doc.text(`Budget Report (${selectedMonth})`, 20, 20);
 
     let yPos = 40;
 
@@ -666,27 +683,26 @@ const Budget = () => {
 
     doc.setFontSize(12);
     budgets.forEach((budget) => {
-      doc.text(budget.category.name, 20, yPos);
+      doc.text(budget.category?.name || "Uncategorized", 20, yPos);
       doc.text(`${currency.symbol}${budget.amount.toFixed(2)}`, 100, yPos);
       doc.text(
-        `${((budget.spent / budget.amount) * 100).toFixed(1)}%`,
+        `${((budget.spent / (budget.amount || 1)) * 100).toFixed(1)}%`,
         150,
         yPos
       );
       yPos += 10;
     });
 
-    doc.save("Budget.pdf");
+    doc.save(`Budget_${selectedMonth}.pdf`);
   };
 
   const getBudgetForAlert = (alertBudgetId: string) => {
     const budget = budgets.find((budget) => budget.id === alertBudgetId);
     if (!budget) {
-      // Check if it's a monthly budget alert
       if (monthlyBudget && alertBudgetId === monthlyBudget.id) {
         return {
           id: monthlyBudget.id,
-          category: { name: "Monthly Budget" },
+          category: { name: "Monthly Budget", color: "#9333ea" },
           amount: monthlyBudget.amount,
           spent: calculateTotalBudget(),
         };
@@ -707,51 +723,135 @@ const Budget = () => {
     return budget;
   };
 
-  const handleManualRefresh = () => {
-    console.log("Manual refresh requested");
-    fetchBudgetsWithSpent();
-    fetchAlerts();
-    fetchMonthlyBudget();
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([
+      fetchBudgetsWithSpent(),
+      fetchAlerts(),
+      fetchMonthlyBudget(),
+      updateEffectiveIncome(),
+    ]);
+    setIsRefreshing(false);
     toast.success("Budget data refreshed");
   };
 
+  const formattedSelectedMonthName = new Date(
+    selectedMonth + "-01"
+  ).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const isCurrentSystemMonth =
+    selectedMonth === new Date().toISOString().slice(0, 7);
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Month Navigation Control Bar */}
+      <div className="mb-6 glass-card p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border border-white/10 shadow-lg">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-xl bg-yellow/10 text-yellow">
+            <CalendarIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white">Active Budget Period</h2>
+            <p className="text-xs text-gray-400">View and manage budgets for any selected month</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => changeMonth(-1)}
+            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+            title="Previous Month"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => {
+              if (e.target.value) setSelectedMonth(e.target.value);
+            }}
+            className="px-3 py-1.5 rounded-xl border border-white/10 bg-[#1c1d23] text-white text-sm font-semibold focus:border-yellow"
+          />
+
+          <button
+            onClick={() => changeMonth(1)}
+            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+            title="Next Month"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          {!isCurrentSystemMonth && (
+            <button
+              onClick={() => setSelectedMonth(new Date().toISOString().slice(0, 7))}
+              className="ml-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-yellow/10 text-yellow border border-yellow/20 hover:bg-yellow/20 transition-all"
+            >
+              Current Month
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Header & Main Actions */}
       <div className="flex flex-col gap-6 mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h1 className="text-3xl font-bold">Budget</h1>
-          <div className="flex flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-100 to-gray-400">
+                Budget Management
+              </h1>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow/10 text-yellow border border-yellow/20 flex items-center gap-1.5 shadow-sm">
+                <Sparkles className="w-3.5 h-3.5" />
+                {formattedSelectedMonthName}
+              </span>
+            </div>
+            <p className="text-gray-400 text-sm mt-1">
+              Plan, monitor, and optimize limits for {formattedSelectedMonthName}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
-              <Button
+              <button
                 onClick={() => setShowAlerts(!showAlerts)}
-                variant="outline"
-                className="relative"
+                className={`relative px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 border ${
+                  alerts.length > 0
+                    ? "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+                    : "bg-white/[0.05] border-white/10 text-gray-300 hover:bg-white/10"
+                }`}
               >
                 {alerts.length > 0 ? (
-                  <Bell className="w-5 h-5 mr-2" />
+                  <Bell className="w-4 h-4 text-red-400 animate-pulse" />
                 ) : (
-                  <BellOff className="w-5 h-5 mr-2" />
+                  <BellOff className="w-4 h-4 text-gray-400" />
                 )}
-                Alerts
+                <span>Alerts</span>
                 {alerts.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500/100 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                  <span className="bg-red-500 text-white rounded-full text-[11px] font-bold h-5 px-1.5 flex items-center justify-center">
                     {alerts.length}
                   </span>
                 )}
-              </Button>
+              </button>
 
               {showAlerts && alerts.length > 0 && (
-                <div className="absolute right-0 mt-2 w-64 md:w-80 glass-card z-50 max-h-96 overflow-y-auto">
-                  <div className="p-3 border-b flex justify-between items-center">
-                    <h3 className="font-semibold">Budget Alerts</h3>
+                <div className="absolute right-0 mt-2 w-72 md:w-96 glass-modal z-50 overflow-hidden shadow-2xl rounded-2xl border border-white/10 animate-fade-in-out">
+                  <div className="p-3.5 bg-white/[0.04] border-b border-white/10 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-red-400" />
+                      <h3 className="font-semibold text-sm">Budget Alerts</h3>
+                    </div>
                     <button
                       onClick={handleAcknowledgeAllAlerts}
-                      className="text-xs text-sky-400 hover:text-sky-300"
+                      className="text-xs text-yellow hover:underline"
                     >
                       Dismiss All
                     </button>
                   </div>
-                  <div className="p-2">
+                  <div className="p-2 max-h-80 overflow-y-auto divide-y divide-white/[0.06]">
                     {alerts.map((alert) => {
                       const budget = getBudgetForAlert(alert.budget_id);
                       if (!budget) return null;
@@ -759,35 +859,40 @@ const Budget = () => {
                       return (
                         <div
                           key={alert.id}
-                          className="p-2 border-b last:border-none"
+                          className="p-3 hover:bg-white/[0.03] transition-colors flex justify-between items-start gap-3"
                         >
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="font-medium">
-                                {budget.category.name}
-                              </p>
-                              <p className="text-sm text-gray-300">
-                                {alert.type === "exceeded"
-                                  ? "Budget exceeded!"
-                                  : alert.type === "approaching"
-                                  ? "Approaching limit"
-                                  : alert.type === "monthly_exceeded"
-                                  ? "Category budgets exceed monthly budget!"
-                                  : "Budget alert"}
-                              </p>
-                              <p className="text-xs text-gray-400">
-                                {currency.symbol}
-                                {budget.spent.toFixed(2)} of {currency.symbol}
-                                {budget.amount.toFixed(2)}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => handleAcknowledgeAlert(alert.id)}
-                              className="text-xs text-sky-400 hover:text-sky-300"
-                            >
-                              Dismiss
-                            </button>
+                          <div>
+                            <p className="font-semibold text-sm text-white flex items-center gap-2">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full inline-block"
+                                style={{
+                                  backgroundColor:
+                                    budget.category?.color || "#ff3c02",
+                                }}
+                              />
+                              {budget.category?.name || "Category"}
+                            </p>
+                            <p className="text-xs text-red-400 font-medium mt-0.5">
+                              {alert.type === "exceeded"
+                                ? "Budget Exceeded!"
+                                : alert.type === "approaching"
+                                ? "Approaching Limit"
+                                : alert.type === "monthly_exceeded"
+                                ? "Total Budgets exceed Monthly Budget!"
+                                : "Budget Alert"}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {currency.symbol}
+                              {budget.spent.toFixed(2)} of {currency.symbol}
+                              {budget.amount.toFixed(2)}
+                            </p>
                           </div>
+                          <button
+                            onClick={() => handleAcknowledgeAlert(alert.id)}
+                            className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-gray-300 transition-colors"
+                          >
+                            Dismiss
+                          </button>
                         </div>
                       );
                     })}
@@ -796,163 +901,251 @@ const Budget = () => {
               )}
             </div>
 
-            <Button onClick={handleManualRefresh} variant="outline">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-5 h-5 mr-2"
-              >
-                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                <path d="M3 3v5h5"></path>
-                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
-                <path d="M16 16h5v5"></path>
-              </svg>
-              Refresh
-            </Button>
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${isRefreshing ? "animate-spin text-yellow" : ""}`}
+              />
+              <span>Refresh</span>
+            </button>
 
-            <Button onClick={exportToExcel} variant="outline">
-              <FileSpreadsheet className="w-5 h-5 mr-2" />
-              Export Excel
-            </Button>
-            <Button onClick={exportToPDF} variant="outline">
-              <FilePdf className="w-5 h-5 mr-2" />
-              Export PDF
-            </Button>
-            <Button onClick={() => setIsAddingBudget(true)} variant="primary">
-              <Plus className="w-5 h-5 mr-2" />
+            <button
+              onClick={exportToExcel}
+              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Export Excel</span>
+            </button>
+
+            <button
+              onClick={exportToPDF}
+              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
+            >
+              <FilePdf className="w-4 h-4 text-rose-400" />
+              <span className="hidden sm:inline">Export PDF</span>
+            </button>
+
+            <Button
+              onClick={() => {
+                setNewBudget((prev) => ({ ...prev, month: selectedMonth }));
+                setIsAddingBudget(true);
+              }}
+              variant="primary"
+              className="shadow-lg shadow-yellow/20"
+            >
+              <Plus className="w-4 h-4 mr-2" />
               Add Budget
             </Button>
           </div>
         </div>
 
-        {/* Monthly Budget Section */}
-        <div className="glass-card p-6 bg-gradient-to-r from-purple-500/15 to-sky-500/15">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold mb-2 text-purple-300">
-                Monthly Budget
-              </h2>
+        {/* High-Tech Monthly Budget Banner */}
+        <div className="relative overflow-hidden rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900/50 p-6 backdrop-blur-xl shadow-2xl">
+          <div className="absolute -right-12 -top-12 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-purple-500/20 text-purple-300">
+                  <Target className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-semibold text-purple-200">
+                  Overall Target Cap ({formattedSelectedMonthName})
+                </h2>
+              </div>
+
               {monthlyBudget ? (
-                <div className="space-y-2">
-                  <p className="text-3xl font-bold text-purple-300">
-                    {currency.symbol}
-                    {monthlyBudget.amount.toFixed(2)}
-                  </p>
-                  <div className="text-sm text-gray-300">
-                    <p>
-                      Category budgets total: {currency.symbol}
-                      {calculateTotalBudget().toFixed(2)}
-                    </p>
-                    <p
-                      className={`font-medium ${
-                        calculateTotalBudget() > monthlyBudget.amount
-                          ? "text-red-400"
-                          : "text-emerald-400"
-                      }`}
-                    >
-                      {calculateTotalBudget() > monthlyBudget.amount
-                        ? `Exceeding by ${currency.symbol}${(
-                            calculateTotalBudget() - monthlyBudget.amount
-                          ).toFixed(2)}`
-                        : `Within budget by ${currency.symbol}${(
-                            monthlyBudget.amount - calculateTotalBudget()
-                          ).toFixed(2)}`}
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-3xl font-extrabold text-white tracking-tight">
+                      {currency.symbol}
+                      {monthlyBudget.amount.toFixed(2)}
+                    </span>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">
+                      Target Limit
+                    </span>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4 pt-1">
+                    <div className="glass-inset p-3 border-white/5">
+                      <p className="text-xs text-gray-400">Total Allocated Categories</p>
+                      <p className="text-base font-bold text-sky-300 mt-0.5">
+                        {currency.symbol}
+                        {calculateTotalBudget().toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="glass-inset p-3 border-white/5">
+                      <p className="text-xs text-gray-400">Budget Status</p>
+                      <p
+                        className={`text-base font-bold mt-0.5 flex items-center gap-1.5 ${
+                          calculateTotalBudget() > monthlyBudget.amount
+                            ? "text-rose-400"
+                            : "text-emerald-400"
+                        }`}
+                      >
+                        {calculateTotalBudget() > monthlyBudget.amount ? (
+                          <>
+                            <AlertTriangle className="w-4 h-4" />
+                            Over by {currency.symbol}
+                            {(
+                              calculateTotalBudget() - monthlyBudget.amount
+                            ).toFixed(2)}
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            Under by {currency.symbol}
+                            {(
+                              monthlyBudget.amount - calculateTotalBudget()
+                            ).toFixed(2)}
+                          </>
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-300">
-                  No monthly budget set for this month
+                <p className="text-gray-400 text-sm">
+                  No overall monthly budget set for {formattedSelectedMonthName}.
                 </p>
               )}
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex items-center gap-3">
               {monthlyBudget ? (
                 <>
-                  <Button
+                  <button
                     onClick={() => {
                       setMonthlyBudgetAmount(monthlyBudget.amount.toString());
                       setIsEditingMonthlyBudget(true);
                     }}
-                    variant="outline"
-                    size="sm"
+                    className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/10 hover:bg-white/20 border border-white/10 text-white transition-all duration-200 flex items-center gap-2"
                   >
-                    <Edit2 className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
+                    <Edit2 className="w-4 h-4 text-purple-300" />
+                    Edit Cap
+                  </button>
+                  <button
                     onClick={handleDeleteMonthlyBudget}
-                    variant="outline"
-                    size="sm"
-                    className="text-red-400 hover:text-red-300"
+                    className="px-4 py-2.5 rounded-xl font-medium text-sm bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 transition-all duration-200 flex items-center gap-2"
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete
-                  </Button>
+                    <Trash2 className="w-4 h-4 text-rose-400" />
+                    Remove
+                  </button>
                 </>
               ) : (
                 <Button
                   onClick={() => setIsSettingMonthlyBudget(true)}
                   variant="primary"
-                  size="sm"
+                  className="shadow-lg shadow-purple-500/20"
                 >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Set Monthly Budget
+                  <Plus className="w-4 h-4 mr-2" />
+                  Set Monthly Cap
                 </Button>
               )}
             </div>
           </div>
         </div>
 
+        {/* 3 Metric Cards */}
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-semibold mb-2">Monthly Income</h2>
-            <p className="text-3xl font-bold text-emerald-400">
+          <div className="glass-card p-6 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-sm font-medium text-gray-400">
+                Monthly Income
+              </span>
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
+                <Wallet className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-extrabold text-emerald-400 tracking-tight">
               {currency.symbol}
               {effectiveIncome.toFixed(2)}
+            </div>
+            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+              <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
+              In-hand earnings available
             </p>
           </div>
 
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-semibold mb-2">
-              Total Category Budgets
-            </h2>
-            <p className="text-3xl font-bold text-sky-400">
+          <div className="glass-card p-6 relative overflow-hidden group hover:border-sky-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-sm font-medium text-gray-400">
+                Allocated Budgets ({selectedMonth})
+              </span>
+              <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-400 group-hover:scale-110 transition-transform">
+                <PieChart className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-extrabold text-sky-400 tracking-tight">
               {currency.symbol}
               {calculateTotalBudget().toFixed(2)}
+            </div>
+            <p className="text-xs text-gray-400 mt-2 flex items-center justify-between">
+              <span>Spent so far:</span>
+              <span className="font-semibold text-gray-200">
+                {currency.symbol}
+                {calculateTotalSpent().toFixed(2)}
+              </span>
             </p>
           </div>
 
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-semibold mb-2">Savings</h2>
-            <p
-              className={`text-3xl font-bold ${
-                calculateSavings() >= 0 ? "text-emerald-400" : "text-red-400"
+          <div className="glass-card p-6 relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-sm font-medium text-gray-400">
+                Unallocated Savings
+              </span>
+              <div
+                className={`p-2.5 rounded-xl ${
+                  calculateSavings() >= 0
+                    ? "bg-purple-500/10 text-purple-400"
+                    : "bg-rose-500/10 text-rose-400"
+                } group-hover:scale-110 transition-transform`}
+              >
+                <PiggyBank className="w-5 h-5" />
+              </div>
+            </div>
+            <div
+              className={`text-3xl font-extrabold tracking-tight ${
+                calculateSavings() >= 0 ? "text-purple-300" : "text-rose-400"
               }`}
             >
               {currency.symbol}
               {calculateSavings().toFixed(2)}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              {calculateSavings() >= 0
+                ? "Remaining after budget allocation"
+                : "Category budgets exceed income"}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Monthly Budget Modal */}
+      {/* Modals */}
       {(isSettingMonthlyBudget || isEditingMonthlyBudget) && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">
-              {isEditingMonthlyBudget
-                ? "Edit Monthly Budget"
-                : "Set Monthly Budget"}
-            </h2>
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in-out">
+          <div className="glass-modal p-6 w-full max-w-md border border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Target className="w-5 h-5 text-purple-400" />
+                {isEditingMonthlyBudget
+                  ? `Edit Monthly Cap (${selectedMonth})`
+                  : `Set Monthly Cap (${selectedMonth})`}
+              </h2>
+              <button
+                onClick={() => {
+                  setIsSettingMonthlyBudget(false);
+                  setIsEditingMonthlyBudget(false);
+                  setMonthlyBudgetAmount("");
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
             <form
               onSubmit={
                 isEditingMonthlyBudget
@@ -962,24 +1155,24 @@ const Budget = () => {
               className="space-y-4"
             >
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Monthly Budget Amount ({currency.symbol})
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
+                  Monthly Target Cap ({currency.symbol})
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   value={monthlyBudgetAmount}
                   onChange={(e) => setMonthlyBudgetAmount(e.target.value)}
-                  className="w-full px-3 py-2 border rounded"
-                  placeholder="Enter monthly budget amount"
+                  className="w-full px-4 py-2.5 border rounded-xl bg-white/[0.06] border-white/10 focus:border-purple-400 text-white text-base"
+                  placeholder="e.g. 50000"
                   required
                 />
-                <p className="text-sm text-gray-400 mt-1">
-                  This is your total budget for the month across all categories
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Applies to {formattedSelectedMonthName} across all categories.
                 </p>
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
                   onClick={() => {
                     setIsSettingMonthlyBudget(false);
@@ -991,7 +1184,7 @@ const Budget = () => {
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary">
-                  {isEditingMonthlyBudget ? "Update Budget" : "Set Budget"}
+                  {isEditingMonthlyBudget ? "Update Cap" : "Set Cap"}
                 </Button>
               </div>
             </form>
@@ -1000,12 +1193,24 @@ const Budget = () => {
       )}
 
       {isAddingBudget && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Budget</h2>
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in-out">
+          <div className="glass-modal p-6 w-full max-w-md border border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Plus className="w-5 h-5 text-yellow" />
+                Add Category Budget
+              </h2>
+              <button
+                onClick={() => setIsAddingBudget(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
             <form onSubmit={handleAddBudget} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
                   Category
                 </label>
                 <select
@@ -1013,7 +1218,7 @@ const Budget = () => {
                   onChange={(e) =>
                     setNewBudget({ ...newBudget, category_id: e.target.value })
                   }
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-[#1c1d23] text-white focus:border-yellow"
                   required
                 >
                   <option value="">Select a category</option>
@@ -1026,8 +1231,8 @@ const Budget = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Amount ({currency.symbol})
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
+                  Budget Amount ({currency.symbol})
                 </label>
                 <input
                   type="number"
@@ -1036,32 +1241,36 @@ const Budget = () => {
                   onChange={(e) =>
                     setNewBudget({ ...newBudget, amount: e.target.value })
                   }
-                  className="w-full px-3 py-2 border rounded"
+                  placeholder="0.00"
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.06] text-white"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Month</label>
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
+                  Target Month
+                </label>
                 <input
                   type="month"
                   value={newBudget.month}
                   onChange={(e) =>
                     setNewBudget({ ...newBudget, month: e.target.value })
                   }
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.06] text-white"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Alert Threshold (%)
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
+                  Alert Warning Threshold ({Math.round(newBudget.notification_threshold * 100)}%)
                 </label>
                 <input
-                  type="number"
-                  min="1"
+                  type="range"
+                  min="50"
                   max="100"
+                  step="5"
                   value={newBudget.notification_threshold * 100}
                   onChange={(e) =>
                     setNewBudget({
@@ -1069,16 +1278,14 @@ const Budget = () => {
                       notification_threshold: parseInt(e.target.value) / 100,
                     })
                   }
-                  className="w-full px-3 py-2 border rounded"
-                  required
+                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-yellow"
                 />
-                <p className="text-sm text-gray-400 mt-1">
-                  You'll be notified when spending reaches this percentage of
-                  your budget
+                <p className="text-xs text-gray-400 mt-1">
+                  Trigger warning alert when spent reaches {Math.round(newBudget.notification_threshold * 100)}% of limit.
                 </p>
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
                   onClick={() => setIsAddingBudget(false)}
                   variant="outline"
@@ -1086,7 +1293,7 @@ const Budget = () => {
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary">
-                  Add Budget
+                  Save Budget
                 </Button>
               </div>
             </form>
@@ -1094,77 +1301,162 @@ const Budget = () => {
         </div>
       )}
 
-      <div className="space-y-4">
-        {budgets.map((budget) => (
-          <div key={budget.id} className="glass-card p-4">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold">
-                    {budget.category.name}
-                    {budget.spent > budget.amount && (
-                      <span className="ml-2 bg-red-500/15 text-red-300 text-xs font-medium px-2 py-0.5 rounded">
-                        Exceeded
-                      </span>
-                    )}
-                    {budget.spent >=
-                      budget.amount * budget.notification_threshold &&
-                      budget.spent <= budget.amount && (
-                        <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded">
-                          Approaching Limit
+      {/* Category Budgets Cards Section */}
+      <div className="mt-8 space-y-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <PieChart className="w-5 h-5 text-yellow" />
+            Category Budgets for {formattedSelectedMonthName} ({budgets.length})
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {budgets.map((budget) => {
+            const percentSpent =
+              budget.amount > 0 ? (budget.spent / budget.amount) * 100 : 0;
+            const isExceeded = budget.spent > budget.amount;
+            const isApproaching =
+              percentSpent >= budget.notification_threshold * 100 && !isExceeded;
+            const remaining = Math.max(budget.amount - budget.spent, 0);
+
+            const categoryColor = budget.category?.color || "#ff3c02";
+
+            return (
+              <div
+                key={budget.id}
+                className="glass-card p-5 relative group overflow-hidden border border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-2xl"
+              >
+                <div
+                  className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none transition-opacity group-hover:opacity-40"
+                  style={{ backgroundColor: categoryColor }}
+                />
+
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="w-4 h-4 rounded-full border border-white/30 shadow-md"
+                        style={{ backgroundColor: categoryColor }}
+                      />
+                      <h3 className="text-lg font-bold text-white tracking-tight">
+                        {budget.category?.name || "Category"}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isExceeded && (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          Exceeded
                         </span>
                       )}
-                  </h3>
-                  <span className="text-lg font-semibold">
-                    {currency.symbol}
-                    {budget.amount.toFixed(2)}
-                  </span>
-                </div>
-                <div className="w-full bg-white/15 rounded-full h-2 mb-2">
-                  <div
-                    className={`h-2 rounded-full ${
-                      budget.spent > budget.amount
-                        ? "bg-red-500/100"
-                        : budget.spent >=
-                          budget.amount * budget.notification_threshold
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                    }`}
-                    style={{
-                      width: `${Math.min(
-                        (budget.spent / budget.amount) * 100,
-                        100
-                      )}%`,
-                    }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-sm text-gray-300">
-                  <span>
-                    Spent: {currency.symbol}
-                    {budget.spent.toFixed(2)}
-                  </span>
-                  <span>
-                    Remaining: {currency.symbol}
-                    {Math.max(budget.amount - budget.spent, 0).toFixed(2)}
-                  </span>
+                      {isApproaching && (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          Near Limit
+                        </span>
+                      )}
+                      {!isExceeded && !isApproaching && (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          On Track
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => handleDeleteBudget(budget.id)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors ml-1"
+                        title="Delete Budget"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-baseline mb-2">
+                    <div>
+                      <span className="text-xs text-gray-400">Spent: </span>
+                      <span
+                        className={`text-lg font-extrabold ${
+                          isExceeded ? "text-rose-400" : "text-white"
+                        }`}
+                      >
+                        {currency.symbol}
+                        {budget.spent.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-gray-400">Budget: </span>
+                      <span className="text-lg font-bold text-gray-200">
+                        {currency.symbol}
+                        {budget.amount.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-white/10 rounded-full h-3 mb-3 overflow-hidden p-0.5 border border-white/5">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isExceeded
+                          ? "bg-gradient-to-r from-rose-600 to-rose-400 shadow-lg shadow-rose-500/50"
+                          : isApproaching
+                          ? "bg-gradient-to-r from-amber-600 to-amber-400 shadow-lg shadow-amber-500/50"
+                          : "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                      }`}
+                      style={{
+                        width: `${Math.min(percentSpent, 100)}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs text-gray-400">
+                    <span>
+                      {isExceeded ? (
+                        <strong className="text-rose-400">
+                          Over budget by {currency.symbol}
+                          {(budget.spent - budget.amount).toFixed(2)}
+                        </strong>
+                      ) : (
+                        <span>
+                          Remaining:{" "}
+                          <strong className="text-emerald-400">
+                            {currency.symbol}
+                            {remaining.toFixed(2)}
+                          </strong>
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-semibold text-gray-300 bg-white/[0.06] px-2 py-0.5 rounded-md border border-white/5">
+                      {percentSpent.toFixed(1)}% Used
+                    </span>
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={() => handleDeleteBudget(budget.id)}
-                className="text-red-400 hover:text-red-400"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        ))}
+            );
+          })}
+        </div>
 
         {budgets.length === 0 && (
-          <div className="glass-card p-6 text-center">
-            <p className="text-gray-400">
-              No budgets set for this month. Add your first budget to get
-              started.
+          <div className="glass-card p-12 text-center border border-dashed border-white/20 rounded-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-yellow/10 text-yellow flex items-center justify-center mx-auto mb-4 border border-yellow/20">
+              <PieChart className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-1">
+              No Budgets Set for {formattedSelectedMonthName}
+            </h3>
+            <p className="text-gray-400 text-sm max-w-md mx-auto mb-6">
+              Establish category spending limits to track progress for {formattedSelectedMonthName}.
             </p>
+            <Button
+              onClick={() => {
+                setNewBudget((prev) => ({ ...prev, month: selectedMonth }));
+                setIsAddingBudget(true);
+              }}
+              variant="primary"
+              className="shadow-lg shadow-yellow/20"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Budget for {formattedSelectedMonthName}
+            </Button>
           </div>
         )}
       </div>

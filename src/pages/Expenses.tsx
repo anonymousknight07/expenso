@@ -10,10 +10,18 @@ import {
   FileSpreadsheet,
   File as FilePdf,
   Share2,
-  Menu,
   AlertTriangle,
   Edit,
   Zap,
+  Wallet,
+  PiggyBank,
+  Sparkles,
+  ArrowUpRight,
+  Filter,
+  CreditCard,
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import Button from "../components/common/Button";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -67,19 +75,14 @@ const Expenses = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const { currency, calculateEffectiveIncome } = useCurrency();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
-  const [showBudgetAlert, setShowBudgetAlert] = useState(false);
-  const [budgetAlertType, setBudgetAlertType] = useState<
-    "warning" | "exceeded"
-  >("warning");
-  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [showActionButtons, setShowActionButtons] = useState(false);
   const [effectiveIncome, setEffectiveIncome] = useState(0);
   const [exceededBudgets, setExceededBudgets] = useState<
     {
@@ -88,7 +91,7 @@ const Expenses = () => {
       spent: number;
     }[]
   >([]);
-  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null); // New state for editing
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const [newExpense, setNewExpense] = useState({
     amount: "",
@@ -115,13 +118,19 @@ const Expenses = () => {
     updateEffectiveIncome();
   }, []);
 
+  const changeMonth = (offset: number) => {
+    const baseMonth = selectedMonth === "all" ? new Date().toISOString().slice(0, 7) : selectedMonth;
+    const [year, month] = baseMonth.split("-").map(Number);
+    const date = new Date(year, month - 1 + offset, 1);
+    setSelectedMonth(date.toISOString().slice(0, 7));
+  };
+
   const fetchExceededBudgets = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Change the date format to include the day (first day of month)
     const today = new Date();
     const currentYearMonth = today.toISOString().slice(0, 7);
     const currentMonthFullDate = `${currentYearMonth}-01`;
@@ -137,7 +146,7 @@ const Expenses = () => {
     `
       )
       .eq("user_id", user.id)
-      .eq("month", currentMonthFullDate); // Use full date here
+      .eq("month", currentMonthFullDate);
 
     if (error) {
       console.error("Error fetching exceeded budgets:", error);
@@ -175,20 +184,6 @@ const Expenses = () => {
     }
 
     setAlerts(data || []);
-  };
-
-  const acknowledgeAlert = async (alertId: string) => {
-    const { error } = await supabase
-      .from("budget_alerts")
-      .update({ acknowledged: true })
-      .eq("id", alertId);
-
-    if (error) {
-      console.error("Error acknowledging alert:", error);
-      return;
-    }
-
-    setAlerts(alerts.filter((alert) => alert.id !== alertId));
   };
 
   const fetchExpenses = async () => {
@@ -252,8 +247,26 @@ const Expenses = () => {
     setCategories(data || []);
   };
 
+  const filterExpenses = () => {
+    let filtered = expenses;
+
+    if (selectedMonth !== "all") {
+      filtered = filtered.filter((expense) => expense.date.startsWith(selectedMonth));
+    }
+
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter((expense) =>
+        expense.categories.some((category) =>
+          selectedCategories.includes(category.id)
+        )
+      );
+    }
+
+    return filtered;
+  };
+
   const calculateTotalExpenses = () => {
-    return expenses.reduce((total, expense) => total + expense.amount, 0);
+    return filterExpenses().reduce((total, expense) => total + expense.amount, 0);
   };
 
   const calculateIncomeAfterExpenses = () => {
@@ -267,7 +280,7 @@ const Expenses = () => {
         .select(
           `
           *,
-          expense_category_mappings!inner (
+          expense_category_mappings (
             category_id
           )
         `
@@ -280,46 +293,35 @@ const Expenses = () => {
         return;
       }
 
-      const expenseMonth = new Date(expense.date).toISOString().slice(0, 7);
+      const expenseMonth = expense.date.slice(0, 7);
       const expenseMonthFullDate = `${expenseMonth}-01`;
 
-      for (const mapping of expense.expense_category_mappings) {
+      const categoryMappings = expense.expense_category_mappings || [];
+      for (const mapping of categoryMappings) {
         const { data: budget, error: budgetError } = await supabase
           .from("budgets")
           .select("*")
           .eq("category_id", mapping.category_id)
-          .eq("month", expenseMonthFullDate) // Use full date here instead of expenseMonth
+          .eq("month", expenseMonthFullDate)
           .single();
 
         if (budgetError) {
-          console.error("Error fetching budget:", budgetError);
           continue;
         }
 
         if (budget) {
           const newSpent = Math.max(0, budget.spent - expense.amount);
-          const { error: updateError } = await supabase
+          await supabase
             .from("budgets")
             .update({ spent: newSpent })
             .eq("id", budget.id);
-
-          if (updateError) {
-            console.error("Error updating budget:", updateError);
-          }
-
-          if (newSpent < budget.amount * budget.notification_threshold) {
-            const { error: alertDeleteError } = await supabase
-              .from("budget_alerts")
-              .delete()
-              .eq("budget_id", budget.id)
-              .eq("acknowledged", false);
-
-            if (alertDeleteError) {
-              console.error("Error deleting alerts:", alertDeleteError);
-            }
-          }
         }
       }
+
+      await supabase
+        .from("expense_category_mappings")
+        .delete()
+        .eq("expense_id", id);
 
       const { error: deleteError } = await supabase
         .from("expenses")
@@ -341,7 +343,6 @@ const Expenses = () => {
     }
   };
 
-  // Function to handle editing an expense
   const handleEditExpense = (expense: Expense) => {
     setEditingExpenseId(expense.id);
     setNewExpense({
@@ -363,14 +364,12 @@ const Expenses = () => {
 
     try {
       if (editingExpenseId) {
-        // Update existing expense
-        // Step 1: Fetch the old expense data
         const { data: oldExpense, error: oldExpenseError } = await supabase
           .from("expenses")
           .select(
             `
             *,
-            expense_category_mappings!inner (
+            expense_category_mappings (
               category_id
             )
           `
@@ -387,13 +386,12 @@ const Expenses = () => {
         const newAmount = parseFloat(newExpense.amount);
         const oldDate = oldExpense.date;
         const newDate = newExpense.date;
-        const oldCategoryIds = oldExpense.expense_category_mappings.map(
+        const oldCategoryIds = (oldExpense.expense_category_mappings || []).map(
           (m: any) => m.category_id
         );
         const newCategoryIds = newExpense.categories;
 
-        // Step 2: Revert old expense from budgets
-        const oldMonth = new Date(oldDate).toISOString().slice(0, 7) + "-01";
+        const oldMonth = oldDate.slice(0, 7) + "-01";
         for (const categoryId of oldCategoryIds) {
           const { data: oldBudget, error: oldBudgetError } = await supabase
             .from("budgets")
@@ -411,7 +409,6 @@ const Expenses = () => {
           }
         }
 
-        // Step 3: Update the expense
         const { data: updatedExpense, error: updateExpenseError } =
           await supabase
             .from("expenses")
@@ -429,14 +426,11 @@ const Expenses = () => {
           return;
         }
 
-        // Step 4: Update category mappings
-        // Delete old mappings
         await supabase
           .from("expense_category_mappings")
           .delete()
           .eq("expense_id", editingExpenseId);
 
-        // Create new mappings
         if (newCategoryIds.length > 0) {
           const mappings = newCategoryIds.map((categoryId) => ({
             expense_id: updatedExpense.id,
@@ -444,17 +438,10 @@ const Expenses = () => {
             user_id: user.id,
           }));
 
-          const { error: mappingError } = await supabase
-            .from("expense_category_mappings")
-            .insert(mappings);
-
-          if (mappingError) {
-            console.error("Error updating category mappings:", mappingError);
-          }
+          await supabase.from("expense_category_mappings").insert(mappings);
         }
 
-        // Step 5: Apply new expense to budgets
-        const newMonth = new Date(newDate).toISOString().slice(0, 7) + "-01";
+        const newMonth = newDate.slice(0, 7) + "-01";
         for (const categoryId of newCategoryIds) {
           const { data: budget, error: budgetError } = await supabase
             .from("budgets")
@@ -472,9 +459,13 @@ const Expenses = () => {
           }
         }
 
+        const expenseMonth = newDate.slice(0, 7);
+        if (selectedMonth !== "all" && selectedMonth !== expenseMonth) {
+          setSelectedMonth(expenseMonth);
+        }
+
         setEditingExpenseId(null);
       } else {
-        // Add new expense (existing code)
         const { data: expense, error: expenseError } = await supabase
           .from("expenses")
           .insert([
@@ -505,21 +496,21 @@ const Expenses = () => {
             .insert(mappings);
 
           if (mappingError) {
-            console.error("Error adding category mappings:", mappingError);
             await supabase.from("expenses").delete().eq("id", expense.id);
             return;
           }
 
-          const currentMonth = new Date(expense.date).toISOString().slice(0, 7);
-          const currentMonthFullDate = `${currentMonth}-01`; //
+          const expenseMonth = expense.date.slice(0, 7);
+          const currentMonthFullDate = `${expenseMonth}-01`;
 
           for (const categoryId of newExpense.categories) {
             const { data: budget, error: budgetError } = await supabase
               .from("budgets")
               .select("*")
               .eq("category_id", categoryId)
-              .eq("month", currentMonthFullDate) // Use full date here instead of currentMonth
+              .eq("month", currentMonthFullDate)
               .single();
+
             if (!budgetError && budget) {
               const newSpent = budget.spent + parseFloat(newExpense.amount);
 
@@ -527,69 +518,13 @@ const Expenses = () => {
                 .from("budgets")
                 .update({ spent: newSpent })
                 .eq("id", budget.id);
-
-              if (newSpent >= budget.amount) {
-                const { data: existingAlert } = await supabase
-                  .from("budget_alerts")
-                  .select("*")
-                  .eq("budget_id", budget.id)
-                  .eq("type", "exceeded")
-                  .eq("acknowledged", false)
-                  .single();
-
-                if (!existingAlert) {
-                  await supabase.from("budget_alerts").insert([
-                    {
-                      budget_id: budget.id,
-                      type: "exceeded",
-                      user_id: user.id,
-                    },
-                  ]);
-
-                  if (
-                    "Notification" in window &&
-                    Notification.permission === "granted"
-                  ) {
-                    new Notification("Budget Alert", {
-                      body: `You have exceeded the budget for this category!`,
-                      icon: "/logo.png",
-                    });
-                  }
-                }
-              } else if (
-                newSpent >=
-                budget.amount * budget.notification_threshold
-              ) {
-                const { data: existingAlert } = await supabase
-                  .from("budget_alerts")
-                  .select("*")
-                  .eq("budget_id", budget.id)
-                  .eq("type", "warning")
-                  .eq("acknowledged", false)
-                  .single();
-
-                if (!existingAlert) {
-                  await supabase.from("budget_alerts").insert([
-                    {
-                      budget_id: budget.id,
-                      type: "warning",
-                      user_id: user.id,
-                    },
-                  ]);
-
-                  if (
-                    "Notification" in window &&
-                    Notification.permission === "granted"
-                  ) {
-                    new Notification("Budget Warning", {
-                      body: `You are approaching your budget limit!`,
-                      icon: "/logo.png",
-                    });
-                  }
-                }
-              }
             }
           }
+        }
+
+        const expenseMonth = newExpense.date.slice(0, 7);
+        if (selectedMonth !== "all" && selectedMonth !== expenseMonth) {
+          setSelectedMonth(expenseMonth);
         }
       }
 
@@ -609,34 +544,6 @@ const Expenses = () => {
       console.error("Unexpected error:", error);
     }
   };
-
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  useEffect(() => {
-    const subscription = supabase
-      .channel("budget-alerts")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "budget_alerts",
-        },
-        () => {
-          fetchAlerts();
-          fetchExceededBudgets();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -681,16 +588,6 @@ const Expenses = () => {
 
     setSelectedCategories((prev) => prev.filter((catId) => catId !== id));
     fetchCategories();
-  };
-
-  const filterExpenses = () => {
-    if (selectedCategories.length === 0) return expenses;
-
-    return expenses.filter((expense) =>
-      expense.categories.some((category) =>
-        selectedCategories.includes(category.id)
-      )
-    );
   };
 
   const groupExpensesByDate = () => {
@@ -843,304 +740,397 @@ const Expenses = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Month Navigation Control Bar */}
+      <div className="mb-6 glass-card p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border border-white/10 shadow-lg">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-xl bg-yellow/10 text-yellow">
+            <CalendarIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white">Expense Period Filter</h2>
+            <p className="text-xs text-gray-400">View expenses for specific months or all time</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => changeMonth(-1)}
+            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+            title="Previous Month"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <input
+            type="month"
+            value={selectedMonth === "all" ? "" : selectedMonth}
+            onChange={(e) => {
+              if (e.target.value) setSelectedMonth(e.target.value);
+            }}
+            className="px-3 py-1.5 rounded-xl border border-white/10 bg-[#1c1d23] text-white text-sm font-semibold focus:border-yellow"
+          />
+
+          <button
+            onClick={() => changeMonth(1)}
+            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+            title="Next Month"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setSelectedMonth("all")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+              selectedMonth === "all"
+                ? "bg-yellow/20 border-yellow text-white shadow-md shadow-yellow/10"
+                : "bg-white/[0.05] border-white/10 text-gray-400 hover:text-white"
+            }`}
+          >
+            All Months
+          </button>
+        </div>
+      </div>
+
+      {/* Exceeded Budgets Banner */}
       {exceededBudgets.length > 0 && (
-        <div className="mb-8 bg-red-500/10 border-l-4 border-red-500 p-4 rounded">
-          <div className="flex items-center justify-between">
+        <div className="mb-6 rounded-2xl bg-gradient-to-r from-rose-950/60 to-red-900/40 border border-rose-500/30 p-5 backdrop-blur-xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-300 mt-0.5">
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
+            </div>
             <div>
-              <h3 className="text-lg font-semibold text-red-300">
-                Budget Alert
+              <h3 className="text-base font-bold text-rose-200">
+                Budget Alert: Exceeded Categories
               </h3>
-              <p className="text-red-400">
-                You have exceeded the budget for the following categories:
-              </p>
-              <ul className="mt-2 space-y-1">
+              <ul className="mt-1 space-y-1">
                 {exceededBudgets.map((budget, index) => (
-                  <li key={index} className="text-red-400">
-                    {budget.categoryName}: Spent {currency.symbol}
+                  <li key={index} className="text-xs text-rose-300">
+                    <strong className="text-white">{budget.categoryName}:</strong>{" "}
+                    Spent {currency.symbol}
                     {budget.spent.toFixed(2)} of {currency.symbol}
                     {budget.amount.toFixed(2)}
                   </li>
                 ))}
               </ul>
             </div>
-            <Link
-              to="/budget"
-              className="bg-red-500/15 text-red-300 px-4 py-2 rounded hover:bg-red-200 transition-colors"
-            >
-              Review Budget
-            </Link>
           </div>
-        </div>
-      )}
-
-      {alerts.length > 0 && (
-        <div className="mb-8">
-          {alerts.map((alert) => (
-            <div
-              key={alert.id}
-              className={`mb-4 p-4 rounded-lg flex items-center justify-between ${
-                alert.type === "exceeded" ? "bg-red-500/15" : "bg-yellow-100"
-              }`}
-            >
-              <div className="flex items-center">
-                <AlertTriangle
-                  className={`w-5 h-5 ${
-                    alert.type === "exceeded"
-                      ? "text-red-400"
-                      : "text-yellow-500"
-                  } mr-2`}
-                />
-                <span>
-                  {alert.type === "exceeded"
-                    ? "You have exceeded your budget!"
-                    : "You are approaching your budget limit!"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => navigate("/budget")}
-                  variant="outline"
-                  className="text-sm"
-                >
-                  View Budget
-                </Button>
-                <button
-                  onClick={() => acknowledgeAlert(alert.id)}
-                  className="text-gray-400 hover:text-gray-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold">Expenses</h1>
-            <button
-              onClick={() => setShowActionButtons(!showActionButtons)}
-              className="md:hidden bg-white/10 p-2 rounded-lg"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-          </div>
-
-          <div
-            className={`flex flex-col md:flex-row gap-2 ${
-              showActionButtons ? "flex" : "hidden md:flex"
-            }`}
+          <Link
+            to="/budget"
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 transition-all"
           >
-            <Button
-              onClick={() =>
-                setViewMode(viewMode === "list" ? "calendar" : "list")
-              }
-              variant="outline"
-              className="w-full md:w-auto"
+            Review Budget
+          </Link>
+        </div>
+      )}
+
+      {/* Header & Controls */}
+      <div className="flex flex-col gap-6 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+              Expense Tracking
+              <span className="text-xs px-2.5 py-1 rounded-full bg-yellow/10 text-yellow border border-yellow/20 font-medium">
+                {selectedMonth === "all" ? "All Time" : selectedMonth}
+              </span>
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Log, categorize, and analyze your daily transactions effortlessly
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setViewMode(viewMode === "list" ? "calendar" : "list")}
+              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
             >
-              <Calendar className="w-5 h-5" />
-              <span className="ml-2 md:hidden">Toggle View</span>
-            </Button>
-            <Button
+              <Calendar className="w-4 h-4 text-sky-400" />
+              <span>{viewMode === "list" ? "Calendar View" : "List View"}</span>
+            </button>
+
+            <button
               onClick={exportToExcel}
-              variant="outline"
-              className="w-full md:w-auto"
+              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
             >
-              <FileSpreadsheet className="w-5 h-5 mr-2" />
-              Export Excel
-            </Button>
-            <Button
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Excel</span>
+            </button>
+
+            <button
               onClick={exportToPDF}
-              variant="outline"
-              className="w-full md:w-auto"
+              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
             >
-              <FilePdf className="w-5 h-5 mr-2" />
-              Export PDF
-            </Button>
-            <Button
+              <FilePdf className="w-4 h-4 text-rose-400" />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+
+            <button
               onClick={() => setIsShareModalOpen(true)}
-              variant="outline"
-              className="w-full md:w-auto"
+              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
             >
-              <Share2 className="w-5 h-5 mr-2" />
-              Share
-            </Button>
-            <Button
+              <Share2 className="w-4 h-4 text-indigo-400" />
+              <span className="hidden sm:inline">Share</span>
+            </button>
+
+            <button
               onClick={() => navigate("/upi-sync")}
-              variant="outline"
-              className="w-full md:w-auto"
+              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition-all duration-200 flex items-center gap-2"
             >
-              <Zap className="w-5 h-5 mr-2" />
-              UPI Sync
-            </Button>
+              <Zap className="w-4 h-4 text-indigo-400" />
+              <span>UPI Sync</span>
+            </button>
+
             <Button
-              onClick={() => setIsAddingExpense(true)}
+              onClick={() => {
+                setEditingExpenseId(null);
+                setNewExpense({
+                  amount: "",
+                  description: "",
+                  date: new Date().toISOString().split("T")[0],
+                  categories: [],
+                });
+                setIsAddingExpense(true);
+              }}
               variant="primary"
-              className="w-full md:w-auto"
+              className="shadow-lg shadow-yellow/20"
             >
-              <Plus className="w-5 h-5 mr-2" />
+              <Plus className="w-4 h-4 mr-1.5" />
               Add Expense
             </Button>
           </div>
         </div>
 
+        {/* 3 Metric Cards */}
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-semibold mb-2">Total Income</h2>
-            <p className="text-3xl font-bold text-emerald-400">
+          <div className="glass-card p-6 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-sm font-medium text-gray-400">
+                Monthly Income
+              </span>
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
+                <Wallet className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-extrabold text-emerald-400 tracking-tight">
               {currency.symbol}
               {effectiveIncome.toFixed(2)}
+            </div>
+            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+              <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
+              In-hand earnings available
             </p>
-            <p className="text-sm text-gray-400">After leave deductions</p>
           </div>
 
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-semibold mb-2">Total Expenses</h2>
-            <p className="text-3xl font-bold text-red-400">
+          <div className="glass-card p-6 relative overflow-hidden group hover:border-rose-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-sm font-medium text-gray-400">
+                Total Expenses ({selectedMonth === "all" ? "All Time" : selectedMonth})
+              </span>
+              <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 group-hover:scale-110 transition-transform">
+                <CreditCard className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-extrabold text-rose-400 tracking-tight">
               {currency.symbol}
               {calculateTotalExpenses().toFixed(2)}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Across {filterExpenses().length} records logged
             </p>
           </div>
 
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-semibold mb-2">
-              Income After Expenses
-            </h2>
-            <p
-              className={`text-3xl font-bold ${
+          <div className="glass-card p-6 relative overflow-hidden group hover:border-sky-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-sm font-medium text-gray-400">
+                Net Remaining Balance
+              </span>
+              <div
+                className={`p-2.5 rounded-xl ${
+                  calculateIncomeAfterExpenses() >= 0
+                    ? "bg-emerald-500/10 text-emerald-400"
+                    : "bg-rose-500/10 text-rose-400"
+                } group-hover:scale-110 transition-transform`}
+              >
+                <PiggyBank className="w-5 h-5" />
+              </div>
+            </div>
+            <div
+              className={`text-3xl font-extrabold tracking-tight ${
                 calculateIncomeAfterExpenses() >= 0
                   ? "text-emerald-400"
-                  : "text-red-400"
+                  : "text-rose-400"
               }`}
             >
               {currency.symbol}
               {calculateIncomeAfterExpenses().toFixed(2)}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Income minus filtered total expenses
             </p>
           </div>
         </div>
       </div>
 
+      {/* Share Modal */}
       {isShareModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Share Report</h2>
-            <div className="space-y-4">
-              <Button
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md border border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-indigo-400" />
+                Share Expense Report
+              </h2>
+              <button
+                onClick={() => setIsShareModalOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <button
                 onClick={() => shareFile("whatsapp")}
-                variant="outline"
-                className="w-full"
+                className="w-full py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-semibold text-sm transition-all flex items-center justify-center gap-2"
               >
                 Share via WhatsApp
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => shareFile("email")}
-                variant="outline"
-                className="w-full"
+                className="w-full py-3 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 font-semibold text-sm transition-all flex items-center justify-center gap-2"
               >
                 Share via Email
-              </Button>
-              <Button
-                onClick={() => setIsShareModalOpen(false)}
-                variant="primary"
-                className="w-full"
-              >
-                Close
-              </Button>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <h2 className="text-xl font-semibold">Categories</h2>
-          <Button
+      {/* Category Filter Chips Section */}
+      <div className="mb-8 glass-card p-5">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-yellow" />
+            <h2 className="text-base font-bold text-white">Filter by Category</h2>
+          </div>
+          <button
             onClick={() => setIsAddingCategory(true)}
-            variant="outline"
-            className="text-sm"
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/10 border border-white/10 text-gray-200 transition-all flex items-center gap-1.5"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Category
-          </Button>
+            <Plus className="w-3.5 h-3.5 text-yellow" />
+            New Category
+          </button>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => {
-                setSelectedCategories((prev) =>
-                  prev.includes(category.id)
-                    ? prev.filter((id) => id !== category.id)
-                    : [...prev, category.id]
-                );
-              }}
-              className="px-3 py-1 rounded-full text-sm flex items-center gap-2 group relative"
-              style={{
-                backgroundColor: selectedCategories.includes(category.id)
-                  ? category.color
-                  : `${category.color}33`,
-                color: selectedCategories.includes(category.id)
-                  ? "white"
-                  : "black",
-              }}
-            >
-              <Tag className="w-4 h-4" />
-              {category.name}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteCategory(category.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 ml-1 hover:text-red-400 transition-opacity"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </button>
-          ))}
+          <button
+            onClick={() => setSelectedCategories([])}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 border ${
+              selectedCategories.length === 0
+                ? "bg-yellow/20 border-yellow text-white shadow-md shadow-yellow/10"
+                : "bg-white/[0.04] border-white/10 text-gray-400 hover:text-white"
+            }`}
+          >
+            All Categories ({filterExpenses().length})
+          </button>
+
+          {categories.map((category) => {
+            const isSelected = selectedCategories.includes(category.id);
+            return (
+              <div key={category.id} className="relative group inline-flex items-center">
+                <button
+                  onClick={() => {
+                    setSelectedCategories((prev) =>
+                      prev.includes(category.id)
+                        ? prev.filter((id) => id !== category.id)
+                        : [...prev, category.id]
+                    );
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 border flex items-center gap-2"
+                  style={{
+                    backgroundColor: isSelected
+                      ? `${category.color}33`
+                      : "rgba(255,255,255,0.04)",
+                    borderColor: isSelected
+                      ? category.color
+                      : "rgba(255,255,255,0.1)",
+                    color: isSelected ? "#ffffff" : "#9ca3af",
+                  }}
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: category.color }}
+                  />
+                  <span>{category.name}</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteCategory(category.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400 transition-all ml-1"
+                  title="Delete category"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
+      {/* Add Category Modal */}
       {isAddingCategory && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Category</h2>
-            <form onSubmit={handleAddCategory}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Name</label>
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md border border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Tag className="w-5 h-5 text-yellow" />
+                Add Category
+              </h2>
+              <button
+                onClick={() => setIsAddingCategory(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddCategory} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
+                  Category Name
+                </label>
                 <input
                   type="text"
                   value={newCategory.name}
                   onChange={(e) =>
                     setNewCategory({ ...newCategory, name: e.target.value })
                   }
-                  placeholder="Category name"
-                  className="w-full px-3 py-2 border rounded"
+                  placeholder="e.g. Groceries, Utility"
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.06] text-white"
                   required
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Color</label>
-                <div className="grid grid-cols-5 gap-2">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-300">
+                  Pick Accent Color
+                </label>
+                <div className="grid grid-cols-5 gap-3">
                   {DEFAULT_COLORS.map((color) => (
                     <button
                       key={color}
                       type="button"
                       onClick={() => setNewCategory({ ...newCategory, color })}
-                      className={`w-8 h-8 rounded-full border-2 ${
+                      className={`w-9 h-9 rounded-xl border-2 transition-transform ${
                         newCategory.color === color
-                          ? "border-white/20"
-                          : "border-transparent"
+                          ? "border-white scale-110 shadow-lg"
+                          : "border-transparent opacity-70 hover:opacity-100"
                       }`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
                   onClick={() => setIsAddingCategory(false)}
                   variant="outline"
@@ -1148,7 +1138,7 @@ const Expenses = () => {
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary">
-                  Add Category
+                  Create Category
                 </Button>
               </div>
             </form>
@@ -1156,15 +1146,28 @@ const Expenses = () => {
         </div>
       )}
 
+      {/* Add / Edit Expense Modal */}
       {isAddingExpense && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">
-              {editingExpenseId ? "Edit Expense" : "Add New Expense"}
-            </h2>
-            <form onSubmit={handleAddOrUpdateExpense}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="glass-modal p-6 w-full max-w-md border border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-yellow" />
+                {editingExpenseId ? "Edit Expense" : "Log New Expense"}
+              </h2>
+              <button
+                onClick={() => {
+                  setIsAddingExpense(false);
+                  setEditingExpenseId(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddOrUpdateExpense} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
                   Amount ({currency.symbol})
                 </label>
                 <input
@@ -1175,12 +1178,12 @@ const Expenses = () => {
                     setNewExpense({ ...newExpense, amount: e.target.value })
                   }
                   placeholder="0.00"
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.06] text-white text-lg font-bold"
                   required
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
                   Description
                 </label>
                 <input
@@ -1192,59 +1195,68 @@ const Expenses = () => {
                       description: e.target.value,
                     })
                   }
-                  placeholder="Description"
-                  className="w-full px-3 py-2 border rounded"
+                  placeholder="e.g. Dinner, Rent"
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.06] text-white"
                   required
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Date</label>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-gray-300">
+                  Date
+                </label>
                 <input
                   type="date"
                   value={newExpense.date}
                   onChange={(e) =>
                     setNewExpense({ ...newExpense, date: e.target.value })
                   }
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.06] text-white"
                   required
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">
-                  Categories
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-300">
+                  Assign Categories
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => {
-                        setNewExpense((prev) => ({
-                          ...prev,
-                          categories: prev.categories.includes(category.id)
-                            ? prev.categories.filter((id) => id !== category.id)
-                            : [...prev.categories, category.id],
-                        }));
-                      }}
-                      className={`px-3 py-1 rounded-full text-sm flex items-center gap-2`}
-                      style={{
-                        backgroundColor: newExpense.categories.includes(
-                          category.id
-                        )
-                          ? category.color
-                          : `${category.color}33`,
-                        color: newExpense.categories.includes(category.id)
-                          ? "white"
-                          : "black",
-                      }}
-                    >
-                      <Tag className="w-4 h-4" />
-                      {category.name}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                  {categories.map((category) => {
+                    const isSelected = newExpense.categories.includes(
+                      category.id
+                    );
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => {
+                          setNewExpense((prev) => ({
+                            ...prev,
+                            categories: prev.categories.includes(category.id)
+                              ? prev.categories.filter(
+                                  (id) => id !== category.id
+                                )
+                              : [...prev.categories, category.id],
+                          }));
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border"
+                        style={{
+                          backgroundColor: isSelected
+                            ? category.color
+                            : "rgba(255,255,255,0.05)",
+                          borderColor: isSelected
+                            ? category.color
+                            : "rgba(255,255,255,0.1)",
+                          color: isSelected ? "#ffffff" : "#9ca3af",
+                        }}
+                      >
+                        <Tag className="w-3.5 h-3.5" />
+                        {category.name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
+
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
                   onClick={() => {
                     setIsAddingExpense(false);
@@ -1255,7 +1267,7 @@ const Expenses = () => {
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary">
-                  {editingExpenseId ? "Update Expense" : "Add Expense"}
+                  {editingExpenseId ? "Save Changes" : "Create Expense"}
                 </Button>
               </div>
             </form>
@@ -1263,118 +1275,135 @@ const Expenses = () => {
         </div>
       )}
 
-      {showBudgetAlert && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Budget Alert</h2>
-            <p className="mb-4">
-              {budgetAlertType === "exceeded"
-                ? "You've exceeded the budget for this category. Would you like to proceed?"
-                : "You're approaching the budget limit for this category."}
-            </p>
-            <div className="flex justify-end gap-2">
-              {budgetAlertType === "exceeded" ? (
-                <>
-                  <Button
-                    onClick={() => {
-                      setShowBudgetAlert(false);
-                      handleAddOrUpdateExpense(new Event("submit") as any);
-                    }}
-                    variant="outline"
-                  >
-                    Proceed Anyway
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowBudgetAlert(false);
-                      navigate("/budget");
-                    }}
-                    variant="primary"
-                  >
-                    Adjust Budget
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  onClick={() => setShowBudgetAlert(false)}
-                  variant="primary"
-                >
-                  Okay
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Main Expense Content (List / Calendar) */}
       {viewMode === "list" ? (
-        <div className="space-y-4">
-          {Array.from(groupExpensesByDate()).map(([date, dayExpenses]) => (
-            <div key={date} className="glass-card p-4">
-              <h3 className="font-semibold mb-3">
-                {new Date(date).toLocaleDateString()}
-              </h3>
-              <div className="space-y-3">
-                {dayExpenses.map((expense: Expense) => (
-                  <div
-                    key={expense.id}
-                    className="flex flex-col md:flex-row md:items-center justify-between p-3 glass-inset gap-3"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {currency.symbol}
-                        {expense.amount.toFixed(2)}
-                      </p>
-                      <p className="text-gray-300">{expense.description}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {expense.categories.map((category) => (
-                          <span
-                            key={category.id}
-                            className="px-2 py-1 rounded-full text-xs"
-                            style={{
-                              backgroundColor: `${category.color}33`,
-                              color: "black",
-                            }}
-                          >
-                            {category.name}
+        <div className="space-y-6">
+          {Array.from(groupExpensesByDate()).map(([date, dayExpenses]) => {
+            const dayTotal = dayExpenses.reduce(
+              (sum, exp) => sum + exp.amount,
+              0
+            );
+
+            return (
+              <div
+                key={date}
+                className="glass-card p-5 border border-white/10 hover:border-white/20 transition-all shadow-xl"
+              >
+                <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-yellow" />
+                    <h3 className="font-bold text-white text-base">
+                      {new Date(date).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </h3>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20">
+                    Day Total: {currency.symbol}
+                    {dayTotal.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {dayExpenses.map((expense: Expense) => (
+                    <div
+                      key={expense.id}
+                      className="glass-inset p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-white/20 transition-all group"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-baseline gap-3">
+                          <span className="text-xl font-extrabold text-white tracking-tight">
+                            {currency.symbol}
+                            {expense.amount.toFixed(2)}
                           </span>
-                        ))}
+                          <span className="text-sm font-semibold text-gray-200">
+                            {expense.description}
+                          </span>
+                        </div>
+
+                        {expense.categories.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2.5">
+                            {expense.categories.map((category) => (
+                              <span
+                                key={category.id}
+                                className="px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                                style={{
+                                  backgroundColor: `${category.color}22`,
+                                  borderColor: `${category.color}44`,
+                                  color: category.color,
+                                }}
+                              >
+                                {category.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => handleEditExpense(expense)}
+                          className="p-2 rounded-xl bg-white/[0.05] hover:bg-sky-500/20 border border-white/10 text-sky-400 hover:text-sky-300 transition-colors"
+                          title="Edit expense"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteExpense(expense.id)}
+                          className="p-2 rounded-xl bg-white/[0.05] hover:bg-rose-500/20 border border-white/10 text-rose-400 hover:text-rose-300 transition-colors"
+                          title="Delete expense"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={() => handleEditExpense(expense)}
-                        className="text-sky-400 hover:text-sky-400"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteExpense(expense.id)}
-                        className="text-red-400 hover:text-red-400"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+            );
+          })}
+
+          {filterExpenses().length === 0 && (
+            <div className="glass-card p-12 text-center border border-dashed border-white/20 rounded-2xl">
+              <div className="w-16 h-16 rounded-2xl bg-yellow/10 text-yellow flex items-center justify-center mx-auto mb-4 border border-yellow/20">
+                <CreditCard className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-1">
+                No Expenses Logged for {selectedMonth === "all" ? "All Time" : selectedMonth}
+              </h3>
+              <p className="text-gray-400 text-sm max-w-md mx-auto mb-6">
+                Add an expense or select a different month to view transactions.
+              </p>
+              <Button
+                onClick={() => setIsAddingExpense(true)}
+                variant="primary"
+                className="shadow-lg shadow-yellow/20"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add New Expense
+              </Button>
             </div>
-          ))}
+          )}
         </div>
       ) : (
-        <div className="glass-card p-4 overflow-x-auto">
+        <div className="glass-card p-6 overflow-x-auto">
           <div className="min-w-[768px]">
-            <div className="grid grid-cols-7 gap-4">
+            <div className="grid grid-cols-7 gap-3 mb-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="text-center font-medium">
+                <div key={day} className="py-2 glass-inset">
                   {day}
                 </div>
               ))}
+            </div>
+            <div className="grid grid-cols-7 gap-3">
               {Array.from({ length: 35 }, (_, i) => {
                 const date = new Date();
                 date.setDate(date.getDate() - date.getDay() + i);
                 const dateStr = date.toISOString().split("T")[0];
-                const dayExpenses = expenses.filter((e) => e.date === dateStr);
+                const dayExpenses = filterExpenses().filter((e) => e.date === dateStr);
                 const totalAmount = dayExpenses.reduce(
                   (sum, exp) => sum + exp.amount,
                   0
@@ -1384,21 +1413,23 @@ const Expenses = () => {
                   <div
                     key={i}
                     onClick={() => handleCalendarDayClick(dateStr)}
-                    className={`p-2 border rounded min-h-[80px] cursor-pointer hover:bg-white/5 transition-colors ${
-                      dayExpenses.length > 0 ? "bg-yellow/10" : ""
+                    className={`p-3 rounded-2xl border min-h-[95px] cursor-pointer hover:border-yellow/50 transition-all flex flex-col justify-between ${
+                      dayExpenses.length > 0
+                        ? "bg-gradient-to-b from-white/[0.08] to-white/[0.03] border-yellow/30"
+                        : "bg-white/[0.02] border-white/10"
                     }`}
                   >
-                    <div className="text-right text-sm text-gray-300">
+                    <div className="text-right text-xs font-bold text-gray-400">
                       {date.getDate()}
                     </div>
                     {dayExpenses.length > 0 && (
-                      <div className="mt-2">
-                        <div className="text-sm font-medium text-white">
+                      <div className="mt-1">
+                        <div className="text-xs font-extrabold text-yellow">
                           {currency.symbol}
                           {totalAmount.toFixed(2)}
                         </div>
-                        <div className="text-xs text-gray-400">
-                          {dayExpenses.length} expense
+                        <div className="text-[10px] text-gray-400 mt-0.5">
+                          {dayExpenses.length} record
                           {dayExpenses.length !== 1 ? "s" : ""}
                         </div>
                       </div>

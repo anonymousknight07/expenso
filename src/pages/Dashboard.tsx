@@ -428,7 +428,7 @@ const fetchLeaderboard = async () => {
       .select(`
         amount,
         date,
-        expense_category_mappings!inner (
+        expense_category_mappings (
           expense_categories (
             name,
             color
