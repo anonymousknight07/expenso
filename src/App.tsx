@@ -20,6 +20,7 @@ import ResetPassword from "./pages/ResetPassword";
 import ChatBot from "./components/chat/ChatBot";
 import MarketNews from "./pages/MarketNews";
 import UpiSync from "./pages/UpiSync";
+import Achievements from "./pages/Achievements";
 
 import NotFound from "./pages/NotFound";
 
@@ -143,6 +144,14 @@ function App() {
             element={
               <PrivatePage>
                 <UpiSync />
+              </PrivatePage>
+            }
+          />
+          <Route
+            path="/achievements"
+            element={
+              <PrivatePage>
+                <Achievements />
               </PrivatePage>
             }
           />

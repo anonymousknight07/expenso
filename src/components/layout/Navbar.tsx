@@ -19,6 +19,7 @@ const PRIMARY_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS: NavItem[] = [
+  { name: "Achievements", path: "/achievements" },
   { name: "UPI Sync", path: "/upi-sync" },
   { name: "Jar System", path: "/jar-system" },
   { name: "Market News", path: "/market" },

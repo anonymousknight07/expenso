@@ -15,7 +15,6 @@ import {
   Zap,
   Wallet,
   PiggyBank,
-  Sparkles,
   ArrowUpRight,
   Filter,
   CreditCard,
@@ -40,13 +39,6 @@ interface Category {
   id: string;
   name: string;
   color: string;
-}
-
-interface Budget {
-  amount: number;
-  category_id: string;
-  month: string;
-  spent: number;
 }
 
 interface BudgetAlert {
@@ -119,7 +111,10 @@ const Expenses = () => {
   }, []);
 
   const changeMonth = (offset: number) => {
-    const baseMonth = selectedMonth === "all" ? new Date().toISOString().slice(0, 7) : selectedMonth;
+    const baseMonth =
+      selectedMonth === "all"
+        ? new Date().toISOString().slice(0, 7)
+        : selectedMonth;
     const [year, month] = baseMonth.split("-").map(Number);
     const date = new Date(year, month - 1 + offset, 1);
     setSelectedMonth(date.toISOString().slice(0, 7));
@@ -251,7 +246,9 @@ const Expenses = () => {
     let filtered = expenses;
 
     if (selectedMonth !== "all") {
-      filtered = filtered.filter((expense) => expense.date.startsWith(selectedMonth));
+      filtered = filtered.filter((expense) =>
+        expense.date.startsWith(selectedMonth)
+      );
     }
 
     if (selectedCategories.length > 0) {
@@ -266,7 +263,10 @@ const Expenses = () => {
   };
 
   const calculateTotalExpenses = () => {
-    return filterExpenses().reduce((total, expense) => total + expense.amount, 0);
+    return filterExpenses().reduce(
+      (total, expense) => total + expense.amount,
+      0
+    );
   };
 
   const calculateIncomeAfterExpenses = () => {
@@ -386,9 +386,9 @@ const Expenses = () => {
         const newAmount = parseFloat(newExpense.amount);
         const oldDate = oldExpense.date;
         const newDate = newExpense.date;
-        const oldCategoryIds = (oldExpense.expense_category_mappings || []).map(
-          (m: any) => m.category_id
-        );
+        const oldCategoryIds = (
+          oldExpense.expense_category_mappings || []
+        ).map((m: any) => m.category_id);
         const newCategoryIds = newExpense.categories;
 
         const oldMonth = oldDate.slice(0, 7) + "-01";
@@ -740,44 +740,50 @@ const Expenses = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl">
       {/* Month Navigation Control Bar */}
       <div className="mb-6 glass-card p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border border-white/10 shadow-lg">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-yellow/10 text-yellow">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="p-2.5 rounded-xl bg-yellow/10 text-yellow flex-shrink-0">
             <CalendarIcon className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Expense Period Filter</h2>
-            <p className="text-xs text-gray-400">View expenses for specific months or all time</p>
+            <h2 className="text-sm sm:text-base font-bold text-white">
+              Expense Period Filter
+            </h2>
+            <p className="text-xs text-gray-400">
+              View expenses for specific months or all time
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => changeMonth(-1)}
-            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
-            title="Previous Month"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => changeMonth(-1)}
+              className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+              title="Previous Month"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
 
-          <input
-            type="month"
-            value={selectedMonth === "all" ? "" : selectedMonth}
-            onChange={(e) => {
-              if (e.target.value) setSelectedMonth(e.target.value);
-            }}
-            className="px-3 py-1.5 rounded-xl border border-white/10 bg-[#1c1d23] text-white text-sm font-semibold focus:border-yellow"
-          />
+            <input
+              type="month"
+              value={selectedMonth === "all" ? "" : selectedMonth}
+              onChange={(e) => {
+                if (e.target.value) setSelectedMonth(e.target.value);
+              }}
+              className="px-3 py-1.5 rounded-xl border border-white/10 bg-[#1c1d23] text-white text-xs sm:text-sm font-semibold focus:border-yellow"
+            />
 
-          <button
-            onClick={() => changeMonth(1)}
-            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
-            title="Next Month"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            <button
+              onClick={() => changeMonth(1)}
+              className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+              title="Next Month"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
 
           <button
             onClick={() => setSelectedMonth("all")}
@@ -794,19 +800,21 @@ const Expenses = () => {
 
       {/* Exceeded Budgets Banner */}
       {exceededBudgets.length > 0 && (
-        <div className="mb-6 rounded-2xl bg-gradient-to-r from-rose-950/60 to-red-900/40 border border-rose-500/30 p-5 backdrop-blur-xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="mb-6 rounded-2xl bg-gradient-to-r from-rose-950/60 to-red-900/40 border border-rose-500/30 p-4 sm:p-5 backdrop-blur-xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-300 mt-0.5">
+            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-300 mt-0.5 flex-shrink-0">
               <AlertTriangle className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-rose-200">
+              <h3 className="text-sm sm:text-base font-bold text-rose-200">
                 Budget Alert: Exceeded Categories
               </h3>
               <ul className="mt-1 space-y-1">
                 {exceededBudgets.map((budget, index) => (
                   <li key={index} className="text-xs text-rose-300">
-                    <strong className="text-white">{budget.categoryName}:</strong>{" "}
+                    <strong className="text-white">
+                      {budget.categoryName}:
+                    </strong>{" "}
                     Spent {currency.symbol}
                     {budget.spent.toFixed(2)} of {currency.symbol}
                     {budget.amount.toFixed(2)}
@@ -817,7 +825,7 @@ const Expenses = () => {
           </div>
           <Link
             to="/budget"
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 transition-all"
+            className="w-full md:w-auto text-center px-4 py-2 rounded-xl text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 transition-all"
           >
             Review Budget
           </Link>
@@ -828,56 +836,59 @@ const Expenses = () => {
       <div className="flex flex-col gap-6 mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2 sm:gap-3 flex-wrap">
               Expense Tracking
               <span className="text-xs px-2.5 py-1 rounded-full bg-yellow/10 text-yellow border border-yellow/20 font-medium">
                 {selectedMonth === "all" ? "All Time" : selectedMonth}
               </span>
             </h1>
-            <p className="text-gray-400 text-sm mt-1">
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">
               Log, categorize, and analyze your daily transactions effortlessly
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Action Toolbar Grid for Mobile & Desktop */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
             <button
-              onClick={() => setViewMode(viewMode === "list" ? "calendar" : "list")}
-              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
+              onClick={() =>
+                setViewMode(viewMode === "list" ? "calendar" : "list")
+              }
+              className="px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all flex items-center justify-center gap-2"
             >
               <Calendar className="w-4 h-4 text-sky-400" />
-              <span>{viewMode === "list" ? "Calendar View" : "List View"}</span>
-            </button>
-
-            <button
-              onClick={exportToExcel}
-              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span className="hidden sm:inline">Excel</span>
-            </button>
-
-            <button
-              onClick={exportToPDF}
-              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
-            >
-              <FilePdf className="w-4 h-4 text-rose-400" />
-              <span className="hidden sm:inline">PDF</span>
-            </button>
-
-            <button
-              onClick={() => setIsShareModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all duration-200 flex items-center gap-2"
-            >
-              <Share2 className="w-4 h-4 text-indigo-400" />
-              <span className="hidden sm:inline">Share</span>
+              <span>{viewMode === "list" ? "Calendar" : "List"}</span>
             </button>
 
             <button
               onClick={() => navigate("/upi-sync")}
-              className="px-4 py-2.5 rounded-xl font-medium text-sm bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition-all duration-200 flex items-center gap-2"
+              className="px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition-all flex items-center justify-center gap-2"
             >
               <Zap className="w-4 h-4 text-indigo-400" />
               <span>UPI Sync</span>
+            </button>
+
+            <button
+              onClick={exportToExcel}
+              className="px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>Excel</span>
+            </button>
+
+            <button
+              onClick={exportToPDF}
+              className="px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+            >
+              <FilePdf className="w-4 h-4 text-rose-400" />
+              <span>PDF</span>
+            </button>
+
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="col-span-1 sm:col-span-1 px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm bg-white/[0.05] border border-white/10 text-gray-300 hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+            >
+              <Share2 className="w-4 h-4 text-indigo-400" />
+              <span>Share</span>
             </button>
 
             <Button
@@ -892,70 +903,71 @@ const Expenses = () => {
                 setIsAddingExpense(true);
               }}
               variant="primary"
-              className="shadow-lg shadow-yellow/20"
+              className="col-span-1 sm:col-span-1 shadow-lg shadow-yellow/20 justify-center"
             >
-              <Plus className="w-4 h-4 mr-1.5" />
+              <Plus className="w-4 h-4 mr-1" />
               Add Expense
             </Button>
           </div>
         </div>
 
-        {/* 3 Metric Cards */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="glass-card p-6 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-sm font-medium text-gray-400">
+        {/* 3 Metric Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="glass-card p-5 sm:p-6 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-2 sm:mb-3">
+              <span className="text-xs sm:text-sm font-medium text-gray-400">
                 Monthly Income
               </span>
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
-                <Wallet className="w-5 h-5" />
+              <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+                <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold text-emerald-400 tracking-tight">
+            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight">
               {currency.symbol}
               {effectiveIncome.toFixed(2)}
             </div>
-            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+            <p className="text-[11px] sm:text-xs text-gray-400 mt-2 flex items-center gap-1">
               <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
               In-hand earnings available
             </p>
           </div>
 
-          <div className="glass-card p-6 relative overflow-hidden group hover:border-rose-500/30 transition-all duration-300">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-sm font-medium text-gray-400">
-                Total Expenses ({selectedMonth === "all" ? "All Time" : selectedMonth})
+          <div className="glass-card p-5 sm:p-6 relative overflow-hidden group hover:border-rose-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-2 sm:mb-3">
+              <span className="text-xs sm:text-sm font-medium text-gray-400">
+                Total Expenses (
+                {selectedMonth === "all" ? "All Time" : selectedMonth})
               </span>
-              <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 group-hover:scale-110 transition-transform">
-                <CreditCard className="w-5 h-5" />
+              <div className="p-2 sm:p-2.5 rounded-xl bg-rose-500/10 text-rose-400">
+                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold text-rose-400 tracking-tight">
+            <div className="text-2xl sm:text-3xl font-extrabold text-rose-400 tracking-tight">
               {currency.symbol}
               {calculateTotalExpenses().toFixed(2)}
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-[11px] sm:text-xs text-gray-400 mt-2">
               Across {filterExpenses().length} records logged
             </p>
           </div>
 
-          <div className="glass-card p-6 relative overflow-hidden group hover:border-sky-500/30 transition-all duration-300">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-sm font-medium text-gray-400">
+          <div className="glass-card p-5 sm:p-6 sm:col-span-2 lg:col-span-1 relative overflow-hidden group hover:border-sky-500/30 transition-all duration-300">
+            <div className="flex justify-between items-start mb-2 sm:mb-3">
+              <span className="text-xs sm:text-sm font-medium text-gray-400">
                 Net Remaining Balance
               </span>
               <div
-                className={`p-2.5 rounded-xl ${
+                className={`p-2 sm:p-2.5 rounded-xl ${
                   calculateIncomeAfterExpenses() >= 0
                     ? "bg-emerald-500/10 text-emerald-400"
                     : "bg-rose-500/10 text-rose-400"
-                } group-hover:scale-110 transition-transform`}
+                }`}
               >
-                <PiggyBank className="w-5 h-5" />
+                <PiggyBank className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
             <div
-              className={`text-3xl font-extrabold tracking-tight ${
+              className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
                 calculateIncomeAfterExpenses() >= 0
                   ? "text-emerald-400"
                   : "text-rose-400"
@@ -964,7 +976,7 @@ const Expenses = () => {
               {currency.symbol}
               {calculateIncomeAfterExpenses().toFixed(2)}
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-[11px] sm:text-xs text-gray-400 mt-2">
               Income minus filtered total expenses
             </p>
           </div>
@@ -974,9 +986,9 @@ const Expenses = () => {
       {/* Share Modal */}
       {isShareModalOpen && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md border border-white/10 shadow-2xl">
+          <div className="glass-modal p-5 sm:p-6 w-full max-w-md border border-white/10 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                 <Share2 className="w-5 h-5 text-indigo-400" />
                 Share Expense Report
               </h2>
@@ -1006,11 +1018,13 @@ const Expenses = () => {
       )}
 
       {/* Category Filter Chips Section */}
-      <div className="mb-8 glass-card p-5">
-        <div className="flex items-center justify-between gap-4 mb-4">
+      <div className="mb-8 glass-card p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-4 mb-3 sm:mb-4">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-yellow" />
-            <h2 className="text-base font-bold text-white">Filter by Category</h2>
+            <h2 className="text-sm sm:text-base font-bold text-white">
+              Filter by Category
+            </h2>
           </div>
           <button
             onClick={() => setIsAddingCategory(true)}
@@ -1021,22 +1035,25 @@ const Expenses = () => {
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 max-h-44 sm:max-h-none overflow-y-auto pr-1">
           <button
             onClick={() => setSelectedCategories([])}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 border ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 border ${
               selectedCategories.length === 0
                 ? "bg-yellow/20 border-yellow text-white shadow-md shadow-yellow/10"
                 : "bg-white/[0.04] border-white/10 text-gray-400 hover:text-white"
             }`}
           >
-            All Categories ({filterExpenses().length})
+            All ({filterExpenses().length})
           </button>
 
           {categories.map((category) => {
             const isSelected = selectedCategories.includes(category.id);
             return (
-              <div key={category.id} className="relative group inline-flex items-center">
+              <div
+                key={category.id}
+                className="relative group inline-flex items-center"
+              >
                 <button
                   onClick={() => {
                     setSelectedCategories((prev) =>
@@ -1045,7 +1062,7 @@ const Expenses = () => {
                         : [...prev, category.id]
                     );
                   }}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 border flex items-center gap-2"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 border flex items-center gap-1.5"
                   style={{
                     backgroundColor: isSelected
                       ? `${category.color}33`
@@ -1057,17 +1074,19 @@ const Expenses = () => {
                   }}
                 >
                   <span
-                    className="w-2.5 h-2.5 rounded-full"
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: category.color }}
                   />
-                  <span>{category.name}</span>
+                  <span className="truncate max-w-[120px]">
+                    {category.name}
+                  </span>
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteCategory(category.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400 transition-all ml-1"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400 transition-all ml-0.5"
                   title="Delete category"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -1081,9 +1100,9 @@ const Expenses = () => {
       {/* Add Category Modal */}
       {isAddingCategory && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md border border-white/10 shadow-2xl">
+          <div className="glass-modal p-5 sm:p-6 w-full max-w-md border border-white/10 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                 <Tag className="w-5 h-5 text-yellow" />
                 Add Category
               </h2>
@@ -1114,13 +1133,13 @@ const Expenses = () => {
                 <label className="block text-sm font-medium mb-2 text-gray-300">
                   Pick Accent Color
                 </label>
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-5 gap-2.5 sm:gap-3">
                   {DEFAULT_COLORS.map((color) => (
                     <button
                       key={color}
                       type="button"
                       onClick={() => setNewCategory({ ...newCategory, color })}
-                      className={`w-9 h-9 rounded-xl border-2 transition-transform ${
+                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 transition-transform ${
                         newCategory.color === color
                           ? "border-white scale-110 shadow-lg"
                           : "border-transparent opacity-70 hover:opacity-100"
@@ -1149,9 +1168,9 @@ const Expenses = () => {
       {/* Add / Edit Expense Modal */}
       {isAddingExpense && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="glass-modal p-6 w-full max-w-md border border-white/10 shadow-2xl">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <div className="glass-modal p-5 sm:p-6 w-full max-w-md border border-white/10 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4 sm:mb-5">
+              <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-yellow" />
                 {editingExpenseId ? "Edit Expense" : "Log New Expense"}
               </h2>
@@ -1178,7 +1197,7 @@ const Expenses = () => {
                     setNewExpense({ ...newExpense, amount: e.target.value })
                   }
                   placeholder="0.00"
-                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.06] text-white text-lg font-bold"
+                  className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.06] text-white text-base sm:text-lg font-bold"
                   required
                 />
               </div>
@@ -1218,7 +1237,7 @@ const Expenses = () => {
                 <label className="block text-sm font-medium mb-2 text-gray-300">
                   Assign Categories
                 </label>
-                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-1">
                   {categories.map((category) => {
                     const isSelected = newExpense.categories.includes(
                       category.id
@@ -1277,7 +1296,7 @@ const Expenses = () => {
 
       {/* Main Expense Content (List / Calendar) */}
       {viewMode === "list" ? (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {Array.from(groupExpensesByDate()).map(([date, dayExpenses]) => {
             const dayTotal = dayExpenses.reduce(
               (sum, exp) => sum + exp.amount,
@@ -1287,22 +1306,22 @@ const Expenses = () => {
             return (
               <div
                 key={date}
-                className="glass-card p-5 border border-white/10 hover:border-white/20 transition-all shadow-xl"
+                className="glass-card p-4 sm:p-5 border border-white/10 hover:border-white/20 transition-all shadow-xl"
               >
-                <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
+                <div className="flex justify-between items-center mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-white/10">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-yellow" />
-                    <h3 className="font-bold text-white text-base">
+                    <Calendar className="w-4 h-4 text-yellow flex-shrink-0" />
+                    <h3 className="font-bold text-white text-xs sm:text-base">
                       {new Date(date).toLocaleDateString("en-US", {
-                        weekday: "long",
+                        weekday: "short",
                         year: "numeric",
                         month: "short",
                         day: "numeric",
                       })}
                     </h3>
                   </div>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20">
-                    Day Total: {currency.symbol}
+                  <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 sm:py-1 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20">
+                    Total: {currency.symbol}
                     {dayTotal.toFixed(2)}
                   </span>
                 </div>
@@ -1311,25 +1330,25 @@ const Expenses = () => {
                   {dayExpenses.map((expense: Expense) => (
                     <div
                       key={expense.id}
-                      className="glass-inset p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-white/20 transition-all group"
+                      className="glass-inset p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:border-white/20 transition-all group"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-baseline gap-3">
-                          <span className="text-xl font-extrabold text-white tracking-tight">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-baseline justify-between sm:justify-start gap-2">
+                          <span className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
                             {currency.symbol}
                             {expense.amount.toFixed(2)}
                           </span>
-                          <span className="text-sm font-semibold text-gray-200">
+                          <span className="text-xs sm:text-sm font-semibold text-gray-200 truncate max-w-full">
                             {expense.description}
                           </span>
                         </div>
 
                         {expense.categories.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          <div className="flex flex-wrap gap-1.5 mt-2">
                             {expense.categories.map((category) => (
                               <span
                                 key={category.id}
-                                className="px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                                className="px-2.5 py-0.5 rounded-full text-[11px] font-medium border"
                                 style={{
                                   backgroundColor: `${category.color}22`,
                                   borderColor: `${category.color}44`,
@@ -1343,7 +1362,7 @@ const Expenses = () => {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 justify-end">
+                      <div className="flex items-center gap-2 justify-end pt-2 sm:pt-0 border-t border-white/5 sm:border-t-0">
                         <button
                           onClick={() => handleEditExpense(expense)}
                           className="p-2 rounded-xl bg-white/[0.05] hover:bg-sky-500/20 border border-white/10 text-sky-400 hover:text-sky-300 transition-colors"
@@ -1367,15 +1386,17 @@ const Expenses = () => {
           })}
 
           {filterExpenses().length === 0 && (
-            <div className="glass-card p-12 text-center border border-dashed border-white/20 rounded-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-yellow/10 text-yellow flex items-center justify-center mx-auto mb-4 border border-yellow/20">
-                <CreditCard className="w-8 h-8" />
+            <div className="glass-card p-8 sm:p-12 text-center border border-dashed border-white/20 rounded-2xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-yellow/10 text-yellow flex items-center justify-center mx-auto mb-4 border border-yellow/20">
+                <CreditCard className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-1">
-                No Expenses Logged for {selectedMonth === "all" ? "All Time" : selectedMonth}
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-1">
+                No Expenses Logged for{" "}
+                {selectedMonth === "all" ? "All Time" : selectedMonth}
               </h3>
-              <p className="text-gray-400 text-sm max-w-md mx-auto mb-6">
-                Add an expense or select a different month to view transactions.
+              <p className="text-gray-400 text-xs sm:text-sm max-w-md mx-auto mb-6">
+                Add an expense or select a different month to view
+                transactions.
               </p>
               <Button
                 onClick={() => setIsAddingExpense(true)}
@@ -1389,21 +1410,26 @@ const Expenses = () => {
           )}
         </div>
       ) : (
-        <div className="glass-card p-6 overflow-x-auto">
-          <div className="min-w-[768px]">
-            <div className="grid grid-cols-7 gap-3 mb-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">
+        <div className="glass-card p-4 sm:p-6 overflow-x-auto">
+          <p className="sm:hidden text-[11px] text-gray-400 mb-3 flex items-center gap-1">
+            💡 Scroll horizontally to view full calendar grid
+          </p>
+          <div className="min-w-[650px]">
+            <div className="grid grid-cols-7 gap-2 sm:gap-3 mb-3 text-center text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="py-2 glass-inset">
+                <div key={day} className="py-1.5 sm:py-2 glass-inset">
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-3">
+            <div className="grid grid-cols-7 gap-2 sm:gap-3">
               {Array.from({ length: 35 }, (_, i) => {
                 const date = new Date();
                 date.setDate(date.getDate() - date.getDay() + i);
                 const dateStr = date.toISOString().split("T")[0];
-                const dayExpenses = filterExpenses().filter((e) => e.date === dateStr);
+                const dayExpenses = filterExpenses().filter(
+                  (e) => e.date === dateStr
+                );
                 const totalAmount = dayExpenses.reduce(
                   (sum, exp) => sum + exp.amount,
                   0
@@ -1413,7 +1439,7 @@ const Expenses = () => {
                   <div
                     key={i}
                     onClick={() => handleCalendarDayClick(dateStr)}
-                    className={`p-3 rounded-2xl border min-h-[95px] cursor-pointer hover:border-yellow/50 transition-all flex flex-col justify-between ${
+                    className={`p-2 sm:p-3 rounded-2xl border min-h-[85px] sm:min-h-[95px] cursor-pointer hover:border-yellow/50 transition-all flex flex-col justify-between ${
                       dayExpenses.length > 0
                         ? "bg-gradient-to-b from-white/[0.08] to-white/[0.03] border-yellow/30"
                         : "bg-white/[0.02] border-white/10"
@@ -1424,13 +1450,12 @@ const Expenses = () => {
                     </div>
                     {dayExpenses.length > 0 && (
                       <div className="mt-1">
-                        <div className="text-xs font-extrabold text-yellow">
+                        <div className="text-[11px] sm:text-xs font-extrabold text-yellow">
                           {currency.symbol}
                           {totalAmount.toFixed(2)}
                         </div>
                         <div className="text-[10px] text-gray-400 mt-0.5">
-                          {dayExpenses.length} record
-                          {dayExpenses.length !== 1 ? "s" : ""}
+                          {dayExpenses.length} rec
                         </div>
                       </div>
                     )}
