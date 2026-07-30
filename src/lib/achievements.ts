@@ -170,6 +170,46 @@ export const ALL_BADGES: Badge[] = [
     iconName: "Receipt",
     targetCount: 1,
   },
+  {
+    id: "goal_setter",
+    title: "Goal Setter",
+    description: "Create your first financial goal.",
+    category: "savings",
+    tier: "bronze",
+    xp: 50,
+    iconName: "Target",
+    targetCount: 1,
+  },
+  {
+    id: "savings_champion",
+    title: "Savings Champion",
+    description: "Successfully complete a financial goal.",
+    category: "savings",
+    tier: "gold",
+    xp: 150,
+    iconName: "Trophy",
+    targetCount: 1,
+  },
+  {
+    id: "wishlist_explorer",
+    title: "Patient Buyer",
+    description: "Add at least 3 items to your 48-Hour Wishlist to curb impulsive spending.",
+    category: "tools",
+    tier: "bronze",
+    xp: 100,
+    iconName: "Award",
+    targetCount: 3,
+  },
+  {
+    id: "mood_tracker_badge",
+    title: "Mindful Spender",
+    description: "Record your spending mood on at least 3 different days.",
+    category: "tools",
+    tier: "bronze",
+    xp: 75,
+    iconName: "Sparkles",
+    targetCount: 3,
+  },
 ];
 
 export async function evaluateUserAchievements(userId: string): Promise<{
@@ -185,7 +225,7 @@ export async function evaluateUserAchievements(userId: string): Promise<{
   // 1. Fetch user expenses
   const { data: expenses } = await supabase
     .from("expenses")
-    .select("id, amount, date")
+    .select("id, amount, date, description")
     .eq("user_id", userId);
 
   const expenseList = expenses || [];
@@ -231,7 +271,7 @@ export async function evaluateUserAchievements(userId: string): Promise<{
   // 3. Fetch income / monthly budget
   const { data: incomes } = await supabase
     .from("income")
-    .select("in_hand_amount, amount")
+    .select("in_hand_amount, amount, description")
     .eq("user_id", userId);
 
   const monthlyIncome = (incomes || []).reduce(
@@ -249,19 +289,59 @@ export async function evaluateUserAchievements(userId: string): Promise<{
       ? Math.max(0, Math.round(((monthlyIncome - totalSpentInMonth) / monthlyIncome) * 100))
       : 0;
 
-  // 4. Fetch local / custom metrics fallback
+  // 4. Fetch actual counts from database tables
   let receiptScannedCount = 0;
   let upiSyncCount = 0;
   let jarAllocated = false;
+  let goalCreatedCount = 0;
+  let goalCompletedCount = 0;
+  let totalWishlistCount = 0;
+  let totalMoodCount = 0;
 
   try {
-    const savedUnlocked = localStorage.getItem(`expenso_achievements_${userId}`);
-    const parsedObj = savedUnlocked ? JSON.parse(savedUnlocked) : {};
-    receiptScannedCount = parsedObj.receiptScannedCount || 0;
-    upiSyncCount = parsedObj.upiSyncCount || 0;
-    jarAllocated = parsedObj.jarAllocated || false;
-  } catch (e) {
-    // Ignore localStorage error
+    // A. Count receipts
+    const { count: receiptCount } = await supabase
+      .from("receipts")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+    receiptScannedCount = receiptCount || 0;
+
+    // B. Check if any jars are created
+    const { count: jarCount } = await supabase
+      .from("money_jars")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+    jarAllocated = jarCount !== null && jarCount > 0;
+
+    // C. Count goals (created and completed)
+    const { data: goals } = await supabase
+      .from("goals")
+      .select("completed")
+      .eq("user_id", userId);
+    const goalsList = goals || [];
+    goalCreatedCount = goalsList.length;
+    goalCompletedCount = goalsList.filter((g) => g.completed).length;
+
+    // D. Count wishlist items
+    const { count: wishlistCount } = await supabase
+      .from("wishlist")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+    totalWishlistCount = wishlistCount || 0;
+
+    // E. Count mood log entries
+    const { count: moodCount } = await supabase
+      .from("mood_tracker")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+    totalMoodCount = moodCount || 0;
+
+    // F. Count UPI transactions from expenses & income descriptions starting with "UPI:"
+    const upiExpenseCount = expenseList.filter((e) => e.description && e.description.startsWith("UPI:")).length;
+    const upiIncomeCount = (incomes || []).filter((i) => i.description && i.description.startsWith("UPI:")).length;
+    upiSyncCount = upiExpenseCount + upiIncomeCount;
+  } catch (err) {
+    console.error("Error evaluating database metrics:", err);
   }
 
   // 5. Evaluate progress for each badge
@@ -323,6 +403,18 @@ export async function evaluateUserAchievements(userId: string): Promise<{
       case "receipt_scanner_pro":
         current = receiptScannedCount > 0 ? 1 : 0;
         break;
+      case "goal_setter":
+        current = goalCreatedCount;
+        break;
+      case "savings_champion":
+        current = goalCompletedCount;
+        break;
+      case "wishlist_explorer":
+        current = totalWishlistCount;
+        break;
+      case "mood_tracker_badge":
+        current = totalMoodCount;
+        break;
       default:
         current = 0;
     }
@@ -358,6 +450,67 @@ export async function evaluateUserAchievements(userId: string): Promise<{
     level,
     rankTitle,
   };
+}
+
+export async function syncUserXPAndAchievements(userId: string): Promise<{
+  progressMap: Record<string, UserProgress>;
+  totalXp: number;
+  unlockedCount: number;
+  level: number;
+  rankTitle: string;
+}> {
+  const result = await evaluateUserAchievements(userId);
+
+  try {
+    // 1. Update profiles table with totalXp and level
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        xp: result.totalXp,
+        level: result.level,
+      })
+      .eq("id", userId);
+
+    if (profileError) {
+      console.error("Error updating profile XP/Level:", profileError);
+    }
+
+    // 2. Sync to achievements table (for dashboard notifications)
+    // Fetch existing unlocked badge IDs in DB
+    const { data: dbAchievements } = await supabase
+      .from("achievements")
+      .select("badge_id")
+      .eq("user_id", userId);
+
+    const dbBadgeIds = new Set((dbAchievements || []).map((a) => a.badge_id));
+
+    // Find newly unlocked achievements that are not in the DB
+    const newUnlockedBadges = Object.values(result.progressMap).filter(
+      (progress) => progress.unlocked && !dbBadgeIds.has(progress.badgeId)
+    );
+
+    if (newUnlockedBadges.length > 0) {
+      const inserts = newUnlockedBadges.map((progress) => ({
+        user_id: userId,
+        badge_id: progress.badgeId,
+        unlocked_at: progress.unlockedAt || new Date().toISOString(),
+        notified: false,
+        shared: false,
+      }));
+
+      const { error: insertError } = await supabase
+        .from("achievements")
+        .insert(inserts);
+
+      if (insertError) {
+        console.error("Error inserting achievements:", insertError);
+      }
+    }
+  } catch (err) {
+    console.error("Error in syncUserXPAndAchievements:", err);
+  }
+
+  return result;
 }
 
 export function saveAchievementMeta(

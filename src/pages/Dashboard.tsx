@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCurrency } from '../contexts/CurrencyContext';
-
+import { ALL_BADGES, syncUserXPAndAchievements } from '../lib/achievements';
 
 import {
   Camera,
@@ -31,6 +31,14 @@ import {
   ScanLine,
   Receipt,
   ChevronRight,
+  Lock,
+  CheckCircle2,
+  Flame,
+  ShieldCheck,
+  Sparkles,
+  BarChart3,
+  Award,
+  Gift,
 } from "lucide-react";
 import Button from '../components/common/Button';
 import { Pie, Bar } from 'react-chartjs-2';
@@ -138,6 +146,22 @@ interface Achievement {
   shared: boolean;
 }
 
+const ICON_MAP: Record<string, any> = {
+  Crown,
+  Flame,
+  ShieldCheck,
+  Sparkles,
+  BarChart3,
+  Trophy,
+  Award,
+  Target,
+  Wallet,
+  TrendingUp,
+  Gift,
+  Zap,
+  Receipt,
+};
+
 const Dashboard = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [totalIncome, setTotalIncome] = useState(0);
@@ -188,13 +212,7 @@ const Dashboard = () => {
   const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
-  const badges = [
-    { id: 'first_transaction', icon: Star, title: 'First Transaction', description: 'Made your first transaction' },
-    { id: 'budget_master', icon: Brain, title: 'Budget Master', description: 'Set up your first budget' },
-    { id: 'savings_champion', icon: Heart, title: 'Savings Champion', description: 'Reached savings goal' },
-    { id: 'perfect_month', icon: ThumbsUp, title: 'Perfect Month', description: 'Stayed within budget for a month' },
-    { id: 'goal_setter', icon: Target, title: 'Goal Setter', description: 'Created your first financial goal' },
-  ];
+
 
   const moodOptions = [
     {
@@ -612,90 +630,47 @@ const fetchLeaderboard = async () => {
   };
 
 
-  const updateXPAndLevel = async (xpToAdd:BigInteger) => {
+  const trackUserActivity = async (activityType: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Fetch current profile
-    const { data: currentProfile } = await supabase
-      .from('profiles')
-      .select('xp, level')
-      .eq('id', user.id)
-      .single();
+    // Call syncUserXPAndAchievements to evaluate achievements and update profile in database
+    const result = await syncUserXPAndAchievements(user.id);
 
-    if (!currentProfile) return;
-
-    // Calculate new XP and level
-    const newXP = currentProfile.xp + xpToAdd;
-    const newLevel = Math.floor(newXP / 100) + 1; // Level up every 100 XP
-    
-    // Update profile
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        xp: newXP,
-        level: newLevel
-      })
-      .eq('id', user.id);
-
-    if (error) {
-      console.error('Error updating XP and level:', error);
-      return;
-    }
-
-    setProfile(prev => ({
+    // Update local profile state
+    setProfile(prev => prev ? {
       ...prev,
-      xp: newXP,
-      level: newLevel
-    }));
-  };
+      xp: result.totalXp,
+      level: result.level
+    } : null);
 
-  const trackUserActivity = async (activityType) => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+    // Also fetch achievements list to update local achievements state (which feeds the "Your Achievements" UI)
+    await fetchAchievements();
 
-  const { data: profileData, error } = await supabase
-    .from('profiles')
-    .select('xp, level, last_active')
-    .eq('id', user.id)
-    .single();
-
-  if (error || !profileData) return;
-
-  const xpRewards = {
-    'login': 5,
-    'achievement': 20,
-    'goal_created': 10,
-    'goal_completed': 30,
-    'wishlist_added': 5,
-    'budget_planned': 15,
-    'dashboard_visit': 2,
-    'mood_logged': 3
-  };
-
-  const xpToAdd = xpRewards[activityType] || 0;
-
-  // Check for daily XP only for login/dashboard related XP
-  const today = new Date().toDateString();
-  const lastActive = profileData.last_active
-    ? new Date(profileData.last_active).toDateString()
-    : null;
-
-  const shouldUpdateXP = 
-    (activityType !== 'dashboard_visit' && activityType !== 'login') || today !== lastActive;
-
-  if (xpToAdd > 0 && shouldUpdateXP) {
-    await updateXPAndLevel(xpToAdd);
-
-    // Update last_active date only if this is a daily login-based XP
+    // Check for daily login last_active tracking
     if (activityType === 'dashboard_visit' || activityType === 'login') {
-      await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
-        .update({ last_active: new Date().toISOString() })
-        .eq('id', user.id);
+        .select('last_active')
+        .eq('id', user.id)
+        .single();
+      
+      const today = new Date().toDateString();
+      const lastActive = profileData?.last_active
+        ? new Date(profileData.last_active).toDateString()
+        : null;
+
+      if (today !== lastActive) {
+        await supabase
+          .from('profiles')
+          .update({ last_active: new Date().toISOString() })
+          .eq('id', user.id);
+      }
     }
-  }
-};
+
+    // Trigger check for new achievements (so user gets visual popup)
+    await checkNewAchievements();
+  };
 
 
  const checkNewAchievements = async () => {
@@ -717,7 +692,7 @@ const fetchLeaderboard = async () => {
   
   if (newAchievements && newAchievements.length > 0) {
     const achievement = newAchievements[0];
-    const badge = badges.find(b => b.id === achievement.badge_id);
+    const badge = ALL_BADGES.find(b => b.id === achievement.badge_id);
     
     if (badge) {
       setNewBadge(badge.title);
@@ -937,7 +912,7 @@ const handleWishlistReview = async (item: WishlistItem, stillWantToBuy: boolean)
   };
 
   const shareAchievement = async (achievement: Achievement) => {
-    const badge = badges.find(b => b.id === achievement.badge_id);
+    const badge = ALL_BADGES.find(b => b.id === achievement.badge_id);
     if (!badge) return;
 
     const text = `I just earned the ${badge.title} badge on Expenso! 🎉`;
@@ -1045,7 +1020,7 @@ useEffect(() => {
                   const achievement = achievements.find(
                     (a) =>
                       a.badge_id ===
-                      badges.find((b) => b.title === newBadge)?.id
+                      ALL_BADGES.find((b) => b.title === newBadge)?.id
                   );
                   if (achievement) shareAchievement(achievement);
                   setShowBadgeNotification(false);
@@ -1117,7 +1092,7 @@ useEffect(() => {
                 <div className="w-40 h-2 bg-white/15 rounded-full overflow-hidden">
                   <div
                     className="h-full accent-gradient rounded-full transition-all"
-                    style={{ width: `${(profile?.xp || 0) % 100}%` }}
+                    style={{ width: `${((profile?.xp || 0) % 150) / 150 * 100}%` }}
                   ></div>
                 </div>
                 <span className="text-xs text-gray-400">{profile?.xp || 0} XP</span>
@@ -1232,25 +1207,26 @@ useEffect(() => {
 
       <div className="glass-card p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Your Achievements</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {badges.map((badge) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+          {ALL_BADGES.map((badge) => {
             const achieved = achievements.some((a) => a.badge_id === badge.id);
+            const IconComponent = ICON_MAP[badge.iconName] || Trophy;
             return (
               <div
                 key={badge.id}
-                className={`p-4 rounded-lg border text-center ${
+                className={`p-4 rounded-lg border text-center transition-all ${
                   achieved
-                    ? "bg-yellow/10 border-yellow"
-                    : "bg-white/5 border-white/10"
+                    ? "bg-yellow/10 border-yellow/40 text-yellow shadow-md shadow-yellow/5"
+                    : "bg-white/5 border-white/10 opacity-70"
                 }`}
               >
-                <badge.icon
-                  className={`w-8 h-8 mx-auto mb-2 ${
-                    achieved ? "text-yellow" : "text-gray-400"
-                  }`}
-                />
-                <h3 className="font-medium text-sm">{badge.title}</h3>
-                <p className="text-xs text-gray-400 mt-1">
+                {achieved ? (
+                  <IconComponent className="w-8 h-8 mx-auto mb-2 text-yellow" />
+                ) : (
+                  <Lock className="w-8 h-8 mx-auto mb-2 text-gray-500" />
+                )}
+                <h3 className="font-semibold text-xs truncate text-white">{badge.title}</h3>
+                <p className="text-[10px] text-gray-400 mt-1 line-clamp-2 leading-tight">
                   {badge.description}
                 </p>
                 {achieved && (
@@ -1260,9 +1236,9 @@ useEffect(() => {
                         achievements.find((a) => a.badge_id === badge.id)!
                       )
                     }
-                    className="mt-2 text-xs text-yellow hover:text-yellow-600 flex items-center justify-center gap-1"
+                    className="mt-2 mx-auto text-[10px] text-yellow hover:text-yellow-600 flex items-center justify-center gap-1 font-semibold"
                   >
-                    <Share2 className="w-3 h-3" />
+                    <Share2 className="w-2.5 h-2.5" />
                     Share
                   </button>
                 )}

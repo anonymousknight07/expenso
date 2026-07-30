@@ -28,6 +28,7 @@ import {
   Badge,
   evaluateUserAchievements,
   UserProgress,
+  syncUserXPAndAchievements,
 } from "../lib/achievements";
 import { toast } from "react-hot-toast";
 
@@ -104,7 +105,7 @@ const Achievements = () => {
       return;
     }
 
-    const result = await evaluateUserAchievements(user.id);
+    const result = await syncUserXPAndAchievements(user.id);
     setProgressMap(result.progressMap);
     setTotalXp(result.totalXp);
     setUnlockedCount(result.unlockedCount);
