@@ -1,19 +1,37 @@
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, X, Send, Loader2 } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, Flame, Sparkles, Maximize2 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-const SUGGESTED_QUESTIONS = [
-  "How can I save more money?",
-  "What's the 50/30/20 budget rule?",
-  "How do I track my expenses better?",
-  "Tips for reducing monthly expenses?",
-  "How to set financial goals?",
+interface DashboardFinancialData {
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+  savingsRate: number;
+  recentExpenses: { description: string; amount: number; category: string; date: string }[];
+  overBudgets: { category: string; amount: number; spent: number }[];
+  goals: { title: string; target_amount: number; current_amount: number }[];
+}
+
+const ROAST_PROMPTS = [
+  "💀 Savage Roast My Dashboard Data!",
+  "🍕 Roast My Food & Delivery Obsession",
+  "💥 Roast My Over-Budget Violations",
+  "💸 Am I Speedrunning Bankruptcy?",
+];
+
+const MENTOR_PROMPTS = [
+  "💰 How can I improve my savings rate?",
+  "📊 What's the 50/30/20 budget rule?",
+  "🎯 Help me plan my financial goals",
+  "💡 How to build an emergency fund",
 ];
 
 const BASIC_QUESTIONS = [
@@ -22,28 +40,184 @@ const BASIC_QUESTIONS = [
   "What features does Expenso have?",
 ];
 
-const INITIAL_PROMPTS_LOGGED_IN = [
-  "💰 Ask about budgeting tips",
-  "📊 Learn about expense tracking",
-  "🎯 Get help with financial goals",
-  "💡 Get saving strategies",
-];
+const getRoastSystemPrompt = (sym: string) =>
+  `You are Penny, an unsparingly savage, hilarious, and relentless AI Spending Roaster for Expenso created by Akshat. Your job is to analyze the user's REAL dashboard data (income, expenses, net deficit/surplus, category budgets, food delivery habits, and lagging goals) and roast them with brutal, sarcastic humor. ALWAYS use the user's current currency symbol (${sym}) for all financial amounts. If formatting tables, use standard markdown table syntax (which will render as clean tables). Use emojis (🍕💸🛍️💀), hyperbole, and punchy jokes. Do not hold back on impulse purchases, blown budget limits, or negative balances!`;
 
-const INITIAL_PROMPTS_LOGGED_OUT = [
-  "What is Expenso?",
-  "Who developed Expenso?",
-  "What features does Expenso have?",
-];
+const getMentorSystemPrompt = (sym: string) =>
+  `You are Penny, a friendly, encouraging, and empowering AI Financial Mentor for Expenso created by Akshat. Focus on positive financial advice, budgeting tips, savings strategies, and app guidance in a warm, inspiring tone. ALWAYS use the user's current currency symbol (${sym}) for all monetary amounts.`;
 
-const SYSTEM_PROMPT =
-  "You are a friendly and knowledgeable financial advisor bot for Expenso. Your name is Penny, and you are developed by Akshat, to help users. Focus only on financial advice, budgeting, savings, and questions about using Expenso. If the user is asking more about Akshat, redirect them to his socials, saying you can find his socials in the footer. Be concise but helpful. Do not engage in non-financial conversations.";
+const fetchRealDashboardData = async (userId: string): Promise<DashboardFinancialData> => {
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+  // 1. Income total this month
+  const { data: incomeData } = await supabase
+    .from("income")
+    .select("amount, in_hand_amount")
+    .eq("user_id", userId)
+    .gte("date", startOfMonth);
+
+  const totalIncome = (incomeData || []).reduce(
+    (sum, i) => sum + Number(i.in_hand_amount || i.amount || 0),
+    0
+  );
+
+  // 2. Expenses this month & recent list
+  const { data: expenseData } = await supabase
+    .from("expenses")
+    .select("amount, description, date, category")
+    .eq("user_id", userId)
+    .order("date", { ascending: false });
+
+  const totalExpenses = (expenseData || []).reduce(
+    (sum, e) => sum + Number(e.amount || 0),
+    0
+  );
+  const recentExpenses = (expenseData || []).slice(0, 10);
+
+  // 3. Category Budgets
+  const { data: budgetData } = await supabase
+    .from("budgets")
+    .select("category, amount, spent")
+    .eq("user_id", userId);
+
+  const overBudgets = (budgetData || [])
+    .map((b) => ({
+      category: b.category,
+      amount: Number(b.amount || 0),
+      spent: Number(b.spent || 0),
+    }))
+    .filter((b) => b.spent > b.amount);
+
+  // 4. Goals
+  const { data: goalsData } = await supabase
+    .from("goals")
+    .select("title, target_amount, current_amount")
+    .eq("user_id", userId);
+
+  const balance = totalIncome - totalExpenses;
+  const savingsRate =
+    totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
+
+  return {
+    totalIncome,
+    totalExpenses,
+    balance,
+    savingsRate,
+    recentExpenses,
+    overBudgets,
+    goals: (goalsData || []).map((g) => ({
+      title: g.title,
+      target_amount: Number(g.target_amount || 0),
+      current_amount: Number(g.current_amount || 0),
+    })),
+  };
+};
+
+const generateSavageRoast = (data: DashboardFinancialData, sym: string): string => {
+  const { totalIncome, totalExpenses, balance, savingsRate, recentExpenses, overBudgets, goals } = data;
+
+  if (totalIncome === 0 && totalExpenses === 0 && recentExpenses.length === 0) {
+    return `💀 **SAVAGE ROAST**: You have ${sym}0 income and ${sym}0 expenses logged... Either you're living off-grid like a 17th-century monk, or you're hiding your secret shopping receipts from me! Log some real spending so I can destroy your impulse habits! 🕵️‍♂️💸`;
+  }
+
+  let roastParts: string[] = [];
+
+  roastParts.push(`🔥 **SAVAGE REALITY CHECK** (Live Dashboard Figures in ${sym}):\n`);
+
+  // 1. Balance & Deficit Roast
+  if (balance < 0) {
+    roastParts.push(
+      `🚨 **Net Deficit Disaster**: You've earned **${sym}${totalIncome.toLocaleString()}** this month but blew **${sym}${totalExpenses.toLocaleString()}**! That's a **-${sym}${Math.abs(
+        balance
+      ).toLocaleString()} NET DEFICIT**! You are literally burning money faster than a SpaceX rocket launch! Are you funding a small nation's military or just speedrunning bankruptcy? 💸💀`
+    );
+  } else if (totalIncome > 0) {
+    roastParts.push(
+      `📊 **Monthly Summary**: Income **${sym}${totalIncome.toLocaleString()}** vs Expenses **${sym}${totalExpenses.toLocaleString()}** (Net Surplus: **+${sym}${balance.toLocaleString()}**). Savings Rate: **${savingsRate}%**.`
+    );
+    if (savingsRate < 15) {
+      roastParts.push(
+        `📉 A **${savingsRate}% savings rate** isn't a financial strategy... that's financial chicken! At this pace, your retirement plan is literally buying scratch-off lottery tickets! 🎟️😭`
+      );
+    }
+  } else {
+    roastParts.push(
+      `💸 Total Monthly Expenses: **${sym}${totalExpenses.toLocaleString()}** logged with **${sym}0 recorded income**! Bold move treating your bank account like an infinite money glitch! 🎮🕹️`
+    );
+  }
+
+  // 2. Over-budget Violations
+  if (overBudgets.length > 0) {
+    const ob = overBudgets[0];
+    const diff = ob.spent - ob.amount;
+    roastParts.push(
+      `💥 **Budget Obliteration**: You've completely annihilated your **"${ob.category}"** budget! Limit was **${sym}${ob.amount}**, but you spent **${sym}${ob.spent}** (Over limit by **+${sym}${diff}**)! Budget limits are supposed to be guardrails, not targets to smash through at 100 mph! 🚗💨`
+    );
+  }
+
+  // 3. Category Breakdown (Food & Shopping)
+  const foodCount = recentExpenses.filter((e) => {
+    const text = `${e.category || ""} ${e.description || ""}`.toLowerCase();
+    return (
+      text.includes("food") ||
+      text.includes("pizza") ||
+      text.includes("zomato") ||
+      text.includes("swiggy") ||
+      text.includes("uber") ||
+      text.includes("dining") ||
+      text.includes("restaurant") ||
+      text.includes("cafe")
+    );
+  }).length;
+
+  const foodTotal = recentExpenses
+    .filter((e) => {
+      const text = `${e.category || ""} ${e.description || ""}`.toLowerCase();
+      return (
+        text.includes("food") ||
+        text.includes("pizza") ||
+        text.includes("zomato") ||
+        text.includes("swiggy") ||
+        text.includes("uber") ||
+        text.includes("dining") ||
+        text.includes("restaurant") ||
+        text.includes("cafe")
+      );
+    })
+    .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+  if (foodCount > 0) {
+    roastParts.push(
+      `🍕 **Food Delivery Obsession**: You've logged **${foodCount} food/dining orders** totalling **${sym}${foodTotal}** in recent spending! DoorDash executives are naming a conference room after you right now! Cook a meal or your stove will file a missing person report! 🍳🔥`
+    );
+  }
+
+  // 4. Goals Roast
+  if (goals.length > 0) {
+    const g = goals[0];
+    const pct = g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0;
+    if (pct < 30) {
+      roastParts.push(
+        `🎯 **Goal Lag**: Your savings goal *"${g.title}"* is currently sitting at **${pct}% funded** (${sym}${g.current_amount} / ${sym}${g.target_amount}). At this velocity, you will reach your goal in the year 2089! Hope your future self enjoys vintage wheelchairs! ♿👴`
+      );
+    }
+  }
+
+  roastParts.push(`\n*Want gentle mercy? Toggle to Encouragement Mentor Mode in the top right header! 👼*`);
+
+  return roastParts.join("\n\n");
+};
 
 const ChatBot = () => {
+  const { currency } = useCurrency();
+  const currSym = currency.symbol || "$";
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [personalityMode, setPersonalityMode] = useState<"roast" | "mentor">("roast");
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(ROAST_PROMPTS);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -59,21 +233,24 @@ const ChatBot = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // getSession returns null quietly when logged out (getUser throws)
         const {
           data: { session },
           error,
         } = await supabase.auth.getSession();
         const user = session?.user ?? null;
         if (error) {
-          console.error("Error fetching session:", error);
           setIsLoggedIn(false);
         } else {
           setIsLoggedIn(!!user);
         }
-        setSuggestedQuestions(user ? SUGGESTED_QUESTIONS : BASIC_QUESTIONS);
+        setSuggestedQuestions(
+          user
+            ? personalityMode === "roast"
+              ? ROAST_PROMPTS
+              : MENTOR_PROMPTS
+            : BASIC_QUESTIONS
+        );
       } catch (error) {
-        console.error("Auth check failed:", error);
         setIsLoggedIn(false);
         setSuggestedQuestions(BASIC_QUESTIONS);
       } finally {
@@ -88,7 +265,13 @@ const ChatBot = () => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       const user = session?.user;
       setIsLoggedIn(!!user);
-      setSuggestedQuestions(user ? SUGGESTED_QUESTIONS : BASIC_QUESTIONS);
+      setSuggestedQuestions(
+        user
+          ? personalityMode === "roast"
+            ? ROAST_PROMPTS
+            : MENTOR_PROMPTS
+          : BASIC_QUESTIONS
+      );
 
       if (event === "SIGNED_OUT") {
         setMessages([]);
@@ -96,7 +279,7 @@ const ChatBot = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [personalityMode]);
 
   const handleBasicQuestion = (question: string): string => {
     const lowerQuestion = question.toLowerCase();
@@ -105,7 +288,7 @@ const ChatBot = () => {
       lowerQuestion.includes("what is expenso") ||
       lowerQuestion.includes("about expenso")
     ) {
-      return "Expenso is a comprehensive expense tracking and financial management application that helps users monitor their spending, create budgets, and achieve their financial goals. It provides intuitive tools for tracking expenses, categorizing transactions, and gaining insights into your financial habits.";
+      return "Expenso is a comprehensive expense tracking and financial management application that helps users monitor their spending, create budgets, and achieve their financial goals with gamified RPG elements and savage AI coaching.";
     }
 
     if (
@@ -113,7 +296,7 @@ const ChatBot = () => {
       lowerQuestion.includes("developer") ||
       lowerQuestion.includes("created")
     ) {
-      return "Expenso was developed by Akshat. I'm Penny, your AI financial assistant, also created by Akshat to help users with their financial questions and guide them through using Expenso effectively.";
+      return "Expenso was developed by Akshat. I'm Penny, your savage AI financial roaster, also created by Akshat to destroy your impulse spending habits!";
     }
 
     if (
@@ -121,10 +304,10 @@ const ChatBot = () => {
       lowerQuestion.includes("what can") ||
       lowerQuestion.includes("functionality")
     ) {
-      return "Expenso offers several powerful features including: expense tracking, budget creation and management, financial goal setting, spending analytics, category-wise expense breakdown, and this AI assistant (that's me!) to help with financial advice and app guidance.";
+      return "Expenso features include: Expense tracking, Budget management, Financial RPG Shop (avatar frames & themes), No-Spend Streaks with Daily Fortune Wheel, Financial Time Machine simulator, and this Savage AI Roast Coach!";
     }
 
-    return "I can help you with basic information about Expenso. Please log in to access full financial advisory features, or ask me about what Expenso is, who developed it, or what features it offers.";
+    return "Please log in to unlock the Savage Roast My Dashboard AI Coach and transaction analysis!";
   };
 
   const handleSubmit = async (e: React.FormEvent, customQuestion?: string) => {
@@ -152,42 +335,75 @@ const ChatBot = () => {
         data: { session },
       } = await supabase.auth.getSession();
 
-     const response = await fetch(
-       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-       {
-         method: "POST",
-         headers: {
-           "Content-Type": "application/json",
-           apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-         },
-         body: JSON.stringify({
-           messages,
-           systemPrompt: SYSTEM_PROMPT,
-         }),
-       },
-     );
+      let dashboardData: DashboardFinancialData | null = null;
+      let dashboardContextString = "";
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("Edge function error:", response.status, errText);
-        throw new Error(`Edge function error: ${response.status}`);
+      if (session?.user) {
+        dashboardData = await fetchRealDashboardData(session.user.id);
+        dashboardContextString = `\n\nUser Live Financial Dashboard Context (Currency Symbol: ${currSym}):
+- Monthly Income: ${currSym}${dashboardData.totalIncome}
+- Monthly Expenses: ${currSym}${dashboardData.totalExpenses}
+- Net Balance: ${currSym}${dashboardData.balance}
+- Savings Rate: ${dashboardData.savingsRate}%
+- Over-Budget Categories: ${JSON.stringify(dashboardData.overBudgets)}
+- Recent Expenses: ${JSON.stringify(dashboardData.recentExpenses)}
+- Financial Goals: ${JSON.stringify(dashboardData.goals)}`;
       }
 
-      const data = await response.json();
-      const botResponse = data.choices?.[0]?.message?.content;
-      if (!botResponse) throw new Error("Empty response from model");
+      const currentSystemPrompt =
+        personalityMode === "roast"
+          ? getRoastSystemPrompt(currSym)
+          : getMentorSystemPrompt(currSym);
+
+      let botResponse = "";
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+              messages: [
+                ...messages,
+                {
+                  role: "user",
+                  content: userMessage + dashboardContextString,
+                },
+              ],
+              systemPrompt: currentSystemPrompt,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          botResponse = data.choices?.[0]?.message?.content || "";
+        }
+      } catch (err) {
+        console.error("Chat API error:", err);
+      }
+
+      // Fallback local roast generator using real dashboard data and active currency
+      if (!botResponse && dashboardData) {
+        if (personalityMode === "roast") {
+          botResponse = generateSavageRoast(dashboardData, currSym);
+        } else {
+          botResponse = `💡 **Financial Summary**: You've earned **${currSym}${dashboardData.totalIncome}** and spent **${currSym}${dashboardData.totalExpenses}** this month. Your current savings rate is **${dashboardData.savingsRate}%**. Keep staying disciplined!`;
+        }
+      }
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: botResponse },
+        { role: "assistant", content: botResponse || "Sorry, I couldn't process that request." },
       ]);
 
-      setSuggestedQuestions([
-        "Tell me more about budgeting",
-        "How can I improve my savings?",
-        "What are good financial habits?",
-        "Tips for emergency funds",
-      ]);
+      setSuggestedQuestions(
+        personalityMode === "roast" ? ROAST_PROMPTS : MENTOR_PROMPTS
+      );
     } catch (error) {
       console.error("Error:", error);
       setMessages((prev) => [
@@ -215,78 +431,110 @@ const ChatBot = () => {
   return (
     <div className="fixed bottom-0 right-0 sm:bottom-4 sm:right-4 z-50">
       {isOpen ? (
-        <div className="bg-[#16171d] flex flex-col h-[100vh] w-full sm:h-[500px] sm:w-[380px] sm:rounded-lg sm:shadow-xl">
+        <div className="bg-[#16171d] flex flex-col h-[100vh] w-full sm:h-[540px] sm:w-[420px] sm:rounded-2xl sm:shadow-2xl border border-white/10 overflow-hidden resize min-w-[320px] min-h-[380px] max-w-[95vw] max-h-[90vh]">
           {/* Header */}
-          <div className="p-3 sm:p-4 bg-yellow sm:rounded-t-lg flex items-center gap-2 sm:gap-3">
-            <img
-              src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
-              alt="AI Assistant"
-              className="w-8 h-8 rounded-full object-cover border-2 border-white/20"
-            />
-            <div className="flex-1">
-              <h3 className="font-semibold text-white text-sm sm:text-base">
-                Penny {!isLoggedIn && "(Limited Mode)"}
-              </h3>
-              <p className="text-xs text-white opacity-75">
-                {isLoggedIn
-                  ? "Always here to help!"
-                  : "Please log in for full features"}
-              </p>
+          <div className="p-3 sm:p-4 bg-gradient-to-r from-[#ff3c02] to-[#fa7041] flex items-center justify-between gap-2 shadow-md flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <img
+                src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
+                alt="AI Assistant"
+                className="w-9 h-9 rounded-full object-cover border-2 border-white/30 shadow-md"
+              />
+              <div>
+                <h3 className="font-extrabold text-white text-sm">
+                  Penny {personalityMode === "roast" ? "💀🔥" : "👼"}
+                </h3>
+                <p className="text-[11px] text-white/80">
+                  {personalityMode === "roast" ? `Savage Roaster (${currSym})` : `Financial Mentor (${currSym})`}
+                </p>
+              </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-gray-200 p-1"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+            {/* Personality Toggle & Close */}
+            <div className="flex items-center gap-2">
+              {isLoggedIn && (
+                <button
+                  onClick={() =>
+                    setPersonalityMode(personalityMode === "roast" ? "mentor" : "roast")
+                  }
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border transition-all flex items-center gap-1 shadow-sm ${
+                    personalityMode === "roast"
+                      ? "bg-black/30 text-yellow border-yellow/40 hover:bg-black/50"
+                      : "bg-white/20 text-white border-white/40 hover:bg-white/30"
+                  }`}
+                  title="Toggle AI Coach Personality"
+                >
+                  {personalityMode === "roast" ? (
+                    <>
+                      <Flame className="w-3 h-3 text-yellow" /> Savage Roast
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3 h-3 text-white" /> Mentor
+                    </>
+                  )}
+                </button>
+              )}
+
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
             {messages.length === 0 && (
-              <div className="text-center text-gray-400 py-6 sm:py-8">
+              <div className="text-center text-gray-400 py-4 sm:py-6">
                 <img
                   src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
                   alt="Welcome"
-                  className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full border-2 border-yellow"
+                  className="w-14 h-14 mx-auto mb-3 rounded-full border-2 border-yellow shadow-lg"
                 />
-                <p className="font-medium text-sm sm:text-base">Hello! 👋</p>
+                <p className="font-extrabold text-white text-base">
+                  Hi! I'm Penny 👋
+                </p>
+                <p className="text-xs text-gray-300 mt-1 max-w-[300px] mx-auto">
+                  {personalityMode === "roast"
+                    ? `Connected to your real Dashboard data in ${currSym}! Ready for a savage, unsparing roast? 💀🔥`
+                    : `Ready to guide you towards positive financial growth in ${currSym}! 👼`}
+                </p>
+
                 {isLoggedIn ? (
-                  <>
-                    <p className="text-xs sm:text-sm mt-2">
-                      I'm your financial assistant. Here's what I can help you
-                      with:
-                    </p>
-                    <div className="mt-3 sm:mt-4 space-y-2">
-                      {INITIAL_PROMPTS_LOGGED_IN.map((prompt, index) => (
-                        <button
-                          key={index}
-                          onClick={(e) => handleSubmit(e, prompt)}
-                          className="w-full p-2 text-left hover:bg-white/10 rounded-lg transition-colors text-xs sm:text-sm"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                  <div className="mt-4 space-y-2">
+                    {suggestedQuestions.map((prompt, index) => (
+                      <button
+                        key={index}
+                        onClick={(e) => handleSubmit(e, prompt)}
+                        className={`w-full p-2.5 text-left rounded-xl transition-all text-xs font-bold border flex items-center justify-between ${
+                          personalityMode === "roast"
+                            ? "bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20"
+                            : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                        }`}
+                      >
+                        <span>{prompt}</span>
+                        <Send className="w-3.5 h-3.5 opacity-60" />
+                      </button>
+                    ))}
+                  </div>
                 ) : (
-                  <>
-                    <p className="text-xs sm:text-sm mt-2 text-orange-600">
-                      Please log in to access full financial advisory features.
-                      I can answer basic questions about Expenso:
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-yellow font-semibold mb-2">
+                      Log in to unlock Savage Dashboard AI Roasts!
                     </p>
-                    <div className="mt-3 sm:mt-4 space-y-2">
-                      {INITIAL_PROMPTS_LOGGED_OUT.map((prompt, index) => (
-                        <button
-                          key={index}
-                          onClick={(e) => handleSubmit(e, prompt)}
-                          className="w-full p-2 text-left hover:bg-white/10 rounded-lg transition-colors text-xs sm:text-sm"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                    {BASIC_QUESTIONS.map((prompt, index) => (
+                      <button
+                        key={index}
+                        onClick={(e) => handleSubmit(e, prompt)}
+                        className="w-full p-2 text-left hover:bg-white/10 rounded-lg transition-colors text-xs text-gray-300"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -302,41 +550,59 @@ const ChatBot = () => {
                   <img
                     src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
                     alt="Assistant"
-                    className="w-6 h-6 rounded-full object-cover"
+                    className="w-6 h-6 rounded-full object-cover flex-shrink-0 self-start mt-1"
                   />
                 )}
                 <div
-                  className={`max-w-[85%] rounded-lg p-2.5 sm:p-3 text-sm prose prose-sm max-w-none ${
+                  className={`max-w-[90%] rounded-2xl p-3 text-xs leading-relaxed ${
                     message.role === "user"
-                      ? "bg-yellow text-white prose-invert"
-                      : "bg-white/10 text-white"
+                      ? "bg-gradient-to-r from-[#ff3c02] to-[#fa7041] text-white shadow-md"
+                      : "bg-white/10 text-white border border-white/10 shadow-md"
                   }`}
                 >
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      table: ({ node, ...props }) => (
+                        <div className="overflow-x-auto my-3 rounded-xl border border-white/20 bg-black/40 shadow-inner">
+                          <table className="w-full text-left border-collapse text-[11px]" {...props} />
+                        </div>
+                      ),
+                      thead: ({ node, ...props }) => (
+                        <thead className="bg-yellow/20 text-yellow font-extrabold uppercase text-[10px] tracking-wider" {...props} />
+                      ),
+                      tbody: ({ node, ...props }) => <tbody className="divide-y divide-white/10" {...props} />,
+                      tr: ({ node, ...props }) => <tr className="hover:bg-white/5 transition-colors" {...props} />,
+                      th: ({ node, ...props }) => <th className="p-2 border-b border-white/20 font-bold" {...props} />,
+                      td: ({ node, ...props }) => <td className="p-2 border-b border-white/10 text-gray-200" {...props} />,
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
                 {message.role === "user" && (
                   <img
                     src="https://cdn.sanity.io/images/rh8hx4sn/production/66378e3886cbbfa29ae7eaea174bb98cf9fceaf7-1024x1024.png"
                     alt="User"
-                    className="w-6 h-6 rounded-full object-cover"
+                    className="w-6 h-6 rounded-full object-cover flex-shrink-0 self-start mt-1"
                   />
                 )}
               </div>
             ))}
 
             {messages.length > 0 && !isLoading && (
-              <div className="mt-3 sm:mt-4">
-                <p className="text-xs sm:text-sm text-gray-400 mb-2">
-                  Suggested questions:
+              <div className="mt-3">
+                <p className="text-[11px] font-semibold text-gray-400 mb-1.5">
+                  Suggested Prompts:
                 </p>
-                <div className="space-y-1.5 sm:space-y-2">
+                <div className="space-y-1.5">
                   {suggestedQuestions.map((question, index) => (
                     <button
                       key={index}
                       onClick={(e) => handleSubmit(e, question)}
-                      className="w-full p-2 text-left hover:bg-white/10 rounded-lg transition-colors text-xs sm:text-sm"
+                      className="w-full p-2 text-left bg-white/[0.04] hover:bg-white/10 rounded-xl transition-colors text-xs text-gray-300 border border-white/5 flex items-center justify-between"
                     >
-                      {question}
+                      <span>{question}</span>
                     </button>
                   ))}
                 </div>
@@ -350,16 +616,17 @@ const ChatBot = () => {
                   alt="Assistant"
                   className="w-6 h-6 rounded-full object-cover"
                 />
-                <div className="bg-white/10 rounded-lg p-2.5 sm:p-3">
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                <div className="bg-white/10 rounded-xl p-3 flex items-center gap-2 text-xs text-yellow">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Fetching live dashboard figures in {currSym} & roasting...</span>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="p-3 sm:p-4 border-t">
+          {/* Input Bar */}
+          <div className="p-3 border-t border-white/10 bg-black/20 flex-shrink-0">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -373,40 +640,32 @@ const ChatBot = () => {
                 }}
                 placeholder={
                   isLoggedIn
-                    ? "Ask about finances or Expenso..."
-                    : "Ask basic questions about Expenso..."
+                    ? personalityMode === "roast"
+                      ? `Ask to roast your balance, food, or budgets in ${currSym}...`
+                      : `Ask Penny for financial guidance in ${currSym}...`
+                    : "Ask about Expenso..."
                 }
-                className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow"
+                className="flex-1 px-3 py-2 border border-white/10 bg-white/5 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow/50"
               />
               <button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="bg-yellow text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50"
+                className="bg-gradient-to-r from-[#ff3c02] to-[#fa7041] text-white px-3.5 py-2 rounded-xl hover:brightness-110 disabled:opacity-50 transition-all shadow-md"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-4 h-4" />
               </button>
             </div>
-            {!isLoggedIn && (
-              <p className="text-xs text-orange-600 mt-2 text-center">
-                Log in to access full financial advisory features
-              </p>
-            )}
           </div>
         </div>
       ) : (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-yellow text-white p-3 sm:rounded-full shadow-lg hover:bg-yellow-600 relative"
+          className="bg-gradient-to-r from-[#ff3c02] to-[#fa7041] text-white p-3.5 rounded-full shadow-2xl hover:brightness-110 transition-all relative group border border-white/20"
         >
           <MessageSquare className="w-6 h-6" />
-          <img
-            src="https://cdn.sanity.io/images/rh8hx4sn/production/d825c54520f99ecb48bf87a896d4435543a56d84-1024x1024.png"
-            alt="Assistant"
-            className="w-4 h-4 rounded-full absolute -top-1 -right-1 border border-white/20"
-          />
-          {!isLoggedIn && (
-            <div className="absolute -top-2 -left-2 w-3 h-3 bg-orange-500 rounded-full"></div>
-          )}
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-yellow text-[10px] font-extrabold text-black border border-white animate-pulse">
+            💀
+          </span>
         </button>
       )}
     </div>

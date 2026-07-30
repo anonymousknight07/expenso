@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { ALL_BADGES, syncUserXPAndAchievements } from '../lib/achievements';
+import { SHOP_ITEMS } from './ExpensoShop';
 
 import {
   Camera,
@@ -179,6 +180,8 @@ const Dashboard = () => {
   const [userMood, setUserMood] = useState<string | null>(null);
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [moodStats, setMoodStats] = useState<any[]>([]);
+  const [equippedFrameClass, setEquippedFrameClass] = useState("border-2 border-white/20");
+  const [equippedTitle, setEquippedTitle] = useState<string | null>(null);
 
 
 
@@ -402,6 +405,22 @@ const fetchLeaderboard = async () => {
       if (!data.avatar_url) {
         setShowAvatarModal(true);
       }
+
+      try {
+        const saved = localStorage.getItem(`expenso_shop_${user.id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.equippedFrame) {
+            const item = SHOP_ITEMS.find((i) => i.id === parsed.equippedFrame);
+            if (item?.previewClass) {
+              setEquippedFrameClass(item.previewClass);
+            }
+          }
+          if (parsed.equippedTitle) {
+            setEquippedTitle(parsed.equippedTitle);
+          }
+        }
+      } catch (e) {}
     }
   };
 
@@ -1051,7 +1070,7 @@ useEffect(() => {
                 <img
                   src={profile.avatar_url}
                   alt="Avatar"
-                  className="w-24 h-24 rounded-full object-cover border-2 border-yellow/40 ring-4 ring-yellow/10"
+                  className={`w-24 h-24 rounded-full object-cover transition-all ${equippedFrameClass}`}
                   onError={(e) => {
                     e.currentTarget.src =
                       "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face";
@@ -1059,7 +1078,7 @@ useEffect(() => {
                 />
               ) : (
                 <div
-                  className="w-24 h-24 rounded-full bg-white/15 flex items-center justify-center cursor-pointer hover:bg-white/20 transition-colors"
+                  className={`w-24 h-24 rounded-full flex items-center justify-center cursor-pointer transition-all ${equippedFrameClass}`}
                   onClick={() => setShowAvatarModal(true)}
                 >
                   <Camera className="w-8 h-8 text-gray-400" />
@@ -1085,10 +1104,16 @@ useEffect(() => {
               <h1 className="text-2xl md:text-3xl font-bold mt-0.5">
                 {greeting}, {profile?.first_name || "there"}!
               </h1>
-              <div className="mt-3 flex items-center gap-3 justify-center sm:justify-start">
+              <div className="mt-3 flex flex-wrap items-center gap-3 justify-center sm:justify-start">
                 <span className="glass-chip px-3 py-1 text-xs font-semibold text-yellow-300">
                   Level {profile?.level || 1}
                 </span>
+                {equippedTitle && (
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow/20 text-yellow border border-yellow/40 flex items-center gap-1 shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {equippedTitle}
+                  </span>
+                )}
                 <div className="w-40 h-2 bg-white/15 rounded-full overflow-hidden">
                   <div
                     className="h-full accent-gradient rounded-full transition-all"
@@ -1104,9 +1129,8 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Quote of the day */}
-        <div className="glass-card p-6 relative overflow-hidden flex flex-col justify-center bg-gradient-to-br from-yellow/10 to-transparent">
-          <Quote className="absolute -top-3 -right-3 w-24 h-24 text-yellow/10 rotate-12" />
+        {/* Daily Savings Quote */}
+        <div className="glass-card p-6 border-yellow/20 flex flex-col justify-between">
           <p className="text-xs font-semibold uppercase tracking-wider text-yellow-300 mb-2">
             Thought for today
           </p>
@@ -1115,6 +1139,48 @@ useEffect(() => {
           </p>
           <p className="text-sm text-gray-400 mt-3">— {quoteOfTheDay.author}</p>
         </div>
+      </div>
+
+      {/* Gamification Quick Hub */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <Link
+          to="/shop"
+          className="glass-card p-4 flex items-center gap-3 hover:border-yellow/50 transition-all group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+            ⚔️
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-white group-hover:text-yellow">Expenso Shop</h3>
+            <p className="text-[10px] text-gray-400">Gear & Themes</p>
+          </div>
+        </Link>
+
+        <Link
+          to="/no-spend"
+          className="glass-card p-4 flex items-center gap-3 hover:border-emerald-500/50 transition-all group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+            🔥
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-white group-hover:text-emerald-400">No-Spend Streaks</h3>
+            <p className="text-[10px] text-gray-400">Daily Fortune Wheel</p>
+          </div>
+        </Link>
+
+        <Link
+          to="/time-machine"
+          className="glass-card p-4 flex items-center gap-3 hover:border-purple-500/50 transition-all group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+            🔮
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-white group-hover:text-purple-400">Time Machine</h3>
+            <p className="text-[10px] text-gray-400">Wealth Simulator</p>
+          </div>
+        </Link>
       </div>
       {/* Mood Tracker Section */}
       <div className="glass-card p-6 mb-8">

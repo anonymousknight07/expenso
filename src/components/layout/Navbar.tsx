@@ -20,10 +20,13 @@ const PRIMARY_ITEMS: NavItem[] = [
 
 const MORE_ITEMS: NavItem[] = [
   { name: "Achievements", path: "/achievements" },
+  { name: "Expenso Shop", path: "/shop" },
+  { name: "No-Spend Streaks", path: "/no-spend" },
+  { name: "Time Machine", path: "/time-machine" },
   { name: "UPI Sync", path: "/upi-sync" },
-  { name: "Jar System", path: "/jar-system" },
+  // { name: "Jar System", path: "/jar-system" },
   { name: "Market News", path: "/market" },
-  { name: "Social", path: "/social" },
+  // { name: "Social", path: "/social" },
   { name: "Receipt Scan", path: "/receipt-scanner" },
 ];
 

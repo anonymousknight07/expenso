@@ -14,7 +14,7 @@ import {
   Info,
   ChevronDown,
 } from "lucide-react";
-import upilogo from '../../public/upi.png'
+const upilogo = "/upi.png";
 import Button from "../components/common/Button";
 
 /** A UPI transaction parsed out of an SMS / app-notification text */
