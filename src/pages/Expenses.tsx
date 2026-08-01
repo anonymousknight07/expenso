@@ -99,7 +99,7 @@ const Expenses = () => {
   });
 
   const updateEffectiveIncome = async () => {
-    const income = await calculateEffectiveIncome();
+    const income = await calculateEffectiveIncome(selectedMonth);
     setEffectiveIncome(income);
   };
 
@@ -108,8 +108,26 @@ const Expenses = () => {
     fetchCategories();
     fetchAlerts();
     fetchExceededBudgets();
-    updateEffectiveIncome();
+
+    const incomeChannel = supabase
+      .channel("income_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "income" },
+        () => {
+          updateEffectiveIncome();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(incomeChannel);
+    };
   }, []);
+
+  useEffect(() => {
+    updateEffectiveIncome();
+  }, [selectedMonth]);
 
   const changeMonth = (offset: number) => {
     const baseMonth =
@@ -968,7 +986,7 @@ const Expenses = () => {
           <div className="glass-card p-5 sm:p-6 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
             <div className="flex justify-between items-start mb-2 sm:mb-3">
               <span className="text-xs sm:text-sm font-medium text-gray-400">
-                Monthly Income
+                {selectedMonth === "all" ? "Total Income (All Time)" : "Monthly Income"}
               </span>
               <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
                 <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
