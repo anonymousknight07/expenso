@@ -46,46 +46,99 @@ const getRoastSystemPrompt = (sym: string) =>
 const getMentorSystemPrompt = (sym: string) =>
   `You are Penny, a friendly, encouraging, and empowering AI Financial Mentor for Expenso created by Akshat. Focus on positive financial advice, budgeting tips, savings strategies, and app guidance in a warm, inspiring tone. ALWAYS use the user's current currency symbol (${sym}) for all monetary amounts.`;
 
-const fetchRealDashboardData = async (userId: string): Promise<DashboardFinancialData> => {
-  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+import { getPayCycleRange, PayCycleType } from "../../utils/dateUtils";
 
-  // 1. Income total this month
+const fetchRealDashboardData = async (
+  userId: string,
+  payCycleType: PayCycleType = 'calendar',
+  salaryDay: number = 28
+): Promise<DashboardFinancialData> => {
+  const cycleRange = getPayCycleRange(null, payCycleType, salaryDay);
+  const startStr = cycleRange.startDateStr;
+  const endStr = cycleRange.endDateStr;
+
+  // 1. Income total in this cycle
   const { data: incomeData } = await supabase
     .from("income")
-    .select("amount, in_hand_amount")
+    .select("amount, in_hand_amount, date")
     .eq("user_id", userId)
-    .gte("date", startOfMonth);
+    .gte("date", startStr)
+    .lte("date", endStr);
 
   const totalIncome = (incomeData || []).reduce(
     (sum, i) => sum + Number(i.in_hand_amount || i.amount || 0),
     0
   );
 
-  // 2. Expenses this month & recent list
+  // 2. Expenses in this cycle with category mappings
   const { data: expenseData } = await supabase
     .from("expenses")
-    .select("amount, description, date, category")
+    .select(`
+      amount,
+      description,
+      date,
+      expense_category_mappings (
+        expense_categories (
+          name,
+          color
+        )
+      )
+    `)
     .eq("user_id", userId)
+    .gte("date", startStr)
+    .lte("date", endStr)
     .order("date", { ascending: false });
 
-  const totalExpenses = (expenseData || []).reduce(
-    (sum, e) => sum + Number(e.amount || 0),
+  const formattedExpenses = (expenseData || []).map((e: any) => {
+    const mapping = Array.isArray(e.expense_category_mappings)
+      ? e.expense_category_mappings[0]
+      : e.expense_category_mappings;
+    const cat = Array.isArray(mapping?.expense_categories)
+      ? mapping.expense_categories[0]
+      : mapping?.expense_categories;
+    return {
+      description: e.description || "Expense",
+      amount: Number(e.amount || 0),
+      category: cat?.name || "Uncategorized",
+      date: e.date,
+    };
+  });
+
+  const totalExpenses = formattedExpenses.reduce(
+    (sum, e) => sum + e.amount,
     0
   );
-  const recentExpenses = (expenseData || []).slice(0, 10);
+  const recentExpenses = formattedExpenses.slice(0, 10);
 
-  // 3. Category Budgets
+  // Calculate spent per category
+  const categorySpentMap: Record<string, number> = {};
+  formattedExpenses.forEach((exp) => {
+    categorySpentMap[exp.category] = (categorySpentMap[exp.category] || 0) + exp.amount;
+  });
+
+  // 3. Category Budgets & Over-budget check
   const { data: budgetData } = await supabase
     .from("budgets")
-    .select("category, amount, spent")
+    .select(`
+      amount,
+      category:expense_categories (
+        name
+      )
+    `)
     .eq("user_id", userId);
 
   const overBudgets = (budgetData || [])
-    .map((b) => ({
-      category: b.category,
-      amount: Number(b.amount || 0),
-      spent: Number(b.spent || 0),
-    }))
+    .map((b: any) => {
+      const catObj = Array.isArray(b.category) ? b.category[0] : b.category;
+      const categoryName = catObj?.name || "Uncategorized";
+      const budgetAmount = Number(b.amount || 0);
+      const spent = categorySpentMap[categoryName] || 0;
+      return {
+        category: categoryName,
+        amount: budgetAmount,
+        spent,
+      };
+    })
     .filter((b) => b.spent > b.amount);
 
   // 4. Goals
@@ -209,7 +262,7 @@ const generateSavageRoast = (data: DashboardFinancialData, sym: string): string 
 };
 
 const ChatBot = () => {
-  const { currency } = useCurrency();
+  const { currency, payCycleType, salaryDay } = useCurrency();
   const currSym = currency.symbol || "$";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -339,7 +392,7 @@ const ChatBot = () => {
       let dashboardContextString = "";
 
       if (session?.user) {
-        dashboardData = await fetchRealDashboardData(session.user.id);
+        dashboardData = await fetchRealDashboardData(session.user.id, payCycleType, salaryDay);
         dashboardContextString = `\n\nUser Live Financial Dashboard Context (Currency Symbol: ${currSym}):
 - Monthly Income: ${currSym}${dashboardData.totalIncome}
 - Monthly Expenses: ${currSym}${dashboardData.totalExpenses}

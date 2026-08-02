@@ -32,6 +32,9 @@ import {
   ScanLine,
   Receipt,
   ChevronRight,
+  ChevronLeft,
+  Bell,
+  Calendar,
   Lock,
   CheckCircle2,
   Flame,
@@ -115,10 +118,10 @@ interface UserProfile {
   avatar_url: string | null;
   xp: number;
   level: number;
-  health_score: number;
-  bio: string;
-  occupation: string;
-  last_active: string;
+  health_score?: number;
+  bio?: string;
+  occupation?: string;
+  last_active?: string;
 }
 
 interface Goal {
@@ -163,12 +166,69 @@ const ICON_MAP: Record<string, any> = {
   Receipt,
 };
 
+const Chara = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/4f5b7078f0f8815586be2a046e5a372546f95ffc-1024x1024.png',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/04fc1360172498ebf4d4f70e9ae1c97df820203c-1024x1024.png',
+];
+
+const Scene = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/7d833e1a376996e9990bee29c23f4fa302535a59-183x275.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/6da2a15ccb2cf6345248e24d6786f291ef31e832-168x300.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/042eb85967b1cf069617546795fc317e905d7a88-850x531.webp',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/2b30c8a592fcf5ef0884f698bbba205573428e7f-347x540.jpg',
+];
+
+const Heroes = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/9ac7ff586aa851056da1fefe114d55f8cbe5c05f-1024x576.webp',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/10786e8bfb6abd9c391dacdfa1768acee0020088-640x480.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/f6bfcd3d66568ed63b9c88fa3476d1767737d747-206x245.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/a60b37cb08820d222ecaf90ca1532837818d3a16-900x450.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/d0a8957923fb8c33900bd30118ed8053849e5c5c-900x450.jpg',
+];
+
+const series = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/5c76b1d0aa2ea83496b7feae26c72b29cab8daf9-183x275.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/cf2e7f76ce751f0607c61f77e71f81f93654eb52-564x789.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/7c5cc5a54c5db2f25beea9ad630947a6e045f171-1280x720.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/50bd70094b674c47a0674bb82f5af4fef85277f0-225x225.jpg',
+];
+
+const quotes = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/91b3720ae25ced37f1317d7bd61f39e7303f70d3-800x800.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/76108ec155e52fa810670860b1b74a3a807014eb-183x275.png',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/63e5c7fb3663b86881f5e0e45c6661cdce7446e2-225x225.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/2b44e76fa17201b11c28f93a8dbbe788d260915a-1200x1003.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/28eb7dc4e4bdb10adf6e11c0421fbab2a460c0d3-1200x1200.jpg',
+];
+
+const anime = [
+  'https://cdn.sanity.io/images/rh8hx4sn/production/b4bbc9c2f97ffda393a6a85012bc88bb00dc995b-554x554.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/cb215e32efcb6393773e40328b2d8b4f5875b802-6860x5144.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/ed2f0ce1bbfc4601e61b13a5cdb9f8377a825ed6-1000x1000.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/2da13bb38ef1859b7d082cf17f6c931f7621263a-900x1600.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/d0075dd35eda4eb06aba6ed3dd9b8d9cdc7cb944-236x236.jpg',
+  'https://cdn.sanity.io/images/rh8hx4sn/production/eb0999f5db0141e3a6920709958ddb0fdc420333-1024x1024.jpg'
+];
+
+const avatarCategories = {
+  charater: { name: 'Character', avatars: Chara },
+  scene: { name: 'Scene', avatars: Scene },
+  professional: { name: 'Heroes', avatars: Heroes },
+  diverse: { name: 'Series', avatars: series },
+  illustrated: { name: 'Quotes', avatars: quotes },
+  generated: { name: 'Anime', avatars: anime }
+};
+
+type AvatarCategoryKey = keyof typeof avatarCategories;
+
 const Dashboard = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [dailyExpenses, setDailyExpenses] = useState<any[]>([]);
-  const [categoryExpenses, setCategoryExpenses] = useState<any[]>([]);
+  const [categoryExpenses, setCategoryExpenses] = useState<
+    { category: string; amount: number }[]
+  >([]);
   const [recentExpenses, setRecentExpenses] = useState<
     { id: string; amount: number; description: string; date: string }[]
   >([]);
@@ -176,7 +236,7 @@ const Dashboard = () => {
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
-  const [selectedAvatarCategory, setSelectedAvatarCategory] = useState('charater');
+  const [selectedAvatarCategory, setSelectedAvatarCategory] = useState<AvatarCategoryKey>('charater');
   const [userMood, setUserMood] = useState<string | null>(null);
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [moodStats, setMoodStats] = useState<any[]>([]);
@@ -201,25 +261,40 @@ const Dashboard = () => {
     price: '',
     reflection: '',
   });
+  const [selectedMonth, setSelectedMonth] = useState<string>(() =>
+    new Date().toISOString().slice(0, 7)
+  );
+
   const { currency, payCycleType, salaryDay, getPayCycleRange, calculateEffectiveIncome } = useCurrency();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchFinancialData();
-  }, [payCycleType, salaryDay]);
+    fetchFinancialData(selectedMonth);
+    fetchRecentExpenses(selectedMonth);
+  }, [selectedMonth, payCycleType, salaryDay]);
 
-  const fetchFinancialData = async () => {
+  const changeMonth = (offset: number) => {
+    const baseMonth =
+      selectedMonth === "all"
+        ? new Date().toISOString().slice(0, 7)
+        : selectedMonth;
+    const [year, month] = baseMonth.split("-").map(Number);
+    const date = new Date(year, month - 1 + offset, 1);
+    setSelectedMonth(date.toISOString().slice(0, 7));
+  };
+
+  const fetchFinancialData = async (monthToUse = selectedMonth) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const cycleRange = getPayCycleRange();
+    const cycleRange = getPayCycleRange(monthToUse);
     const startOfMonth = cycleRange.startDateStr;
     const endOfMonth = cycleRange.endDateStr;
 
-    const monthlyIncome = await calculateEffectiveIncome();
+    const monthlyIncome = await calculateEffectiveIncome(monthToUse);
     setTotalIncome(monthlyIncome);
 
-    const { data: expensesData } = await supabase
+    let query = supabase
       .from('expenses')
       .select(`
         amount,
@@ -231,22 +306,26 @@ const Dashboard = () => {
           )
         )
       `)
-      .eq('user_id', user.id)
-      .gte('date', startOfMonth)
-      .lte('date', endOfMonth);
+      .eq('user_id', user.id);
+
+    if (monthToUse !== 'all') {
+      query = query.gte('date', startOfMonth).lte('date', endOfMonth);
+    }
+
+    const { data: expensesData } = await query;
 
     if (expensesData) {
       const totalExp = expensesData.reduce((sum, exp) => sum + exp.amount, 0);
       setTotalExpenses(totalExp);
 
-      const dailyExp = expensesData.reduce((acc, exp) => {
-        const date = new Date(exp.date).toLocaleDateString();
+      const dailyExp = expensesData.reduce((acc: Record<string, number>, exp: any) => {
+        const date = new Date(exp.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         acc[date] = (acc[date] || 0) + exp.amount;
         return acc;
       }, {});
       setDailyExpenses(Object.entries(dailyExp).map(([date, amount]) => ({ date, amount })));
 
-      const categoryExp = expensesData.reduce((acc, exp) => {
+      const categoryExp = expensesData.reduce((acc: Record<string, number>, exp) => {
         const mapping: any = Array.isArray(exp.expense_category_mappings)
           ? exp.expense_category_mappings[0]
           : exp.expense_category_mappings;
@@ -257,7 +336,11 @@ const Dashboard = () => {
         acc[category] = (acc[category] || 0) + exp.amount;
         return acc;
       }, {});
-      setCategoryExpenses(Object.entries(categoryExp).map(([name, value]) => ({ name, value })));
+      setCategoryExpenses(Object.entries(categoryExp).map(([category, amount]) => ({ category, amount })));
+    } else {
+      setTotalExpenses(0);
+      setDailyExpenses([]);
+      setCategoryExpenses([]);
     }
   };
 
@@ -337,63 +420,7 @@ const Dashboard = () => {
     },
   ];
 
-const Chara=[
- 'https://cdn.sanity.io/images/rh8hx4sn/production/4f5b7078f0f8815586be2a046e5a372546f95ffc-1024x1024.png',
- 'https://cdn.sanity.io/images/rh8hx4sn/production/04fc1360172498ebf4d4f70e9ae1c97df820203c-1024x1024.png',
-];
 
-
-const Scene=[
-  'https://cdn.sanity.io/images/rh8hx4sn/production/7d833e1a376996e9990bee29c23f4fa302535a59-183x275.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/6da2a15ccb2cf6345248e24d6786f291ef31e832-168x300.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/042eb85967b1cf069617546795fc317e905d7a88-850x531.webp',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/2b30c8a592fcf5ef0884f698bbba205573428e7f-347x540.jpg',
-];
-
-
-const Heroes = [
-  'https://cdn.sanity.io/images/rh8hx4sn/production/9ac7ff586aa851056da1fefe114d55f8cbe5c05f-1024x576.webp',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/10786e8bfb6abd9c391dacdfa1768acee0020088-640x480.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/f6bfcd3d66568ed63b9c88fa3476d1767737d747-206x245.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/a60b37cb08820d222ecaf90ca1532837818d3a16-900x450.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/d0a8957923fb8c33900bd30118ed8053849e5c5c-900x450.jpg',
-
-];
-
-const series = [
-  'https://cdn.sanity.io/images/rh8hx4sn/production/5c76b1d0aa2ea83496b7feae26c72b29cab8daf9-183x275.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/cf2e7f76ce751f0607c61f77e71f81f93654eb52-564x789.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/7c5cc5a54c5db2f25beea9ad630947a6e045f171-1280x720.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/50bd70094b674c47a0674bb82f5af4fef85277f0-225x225.jpg',
-  
-];
-
-const quotes = [
-  'https://cdn.sanity.io/images/rh8hx4sn/production/91b3720ae25ced37f1317d7bd61f39e7303f70d3-800x800.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/76108ec155e52fa810670860b1b74a3a807014eb-183x275.png',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/63e5c7fb3663b86881f5e0e45c6661cdce7446e2-225x225.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/2b44e76fa17201b11c28f93a8dbbe788d260915a-1200x1003.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/28eb7dc4e4bdb10adf6e11c0421fbab2a460c0d3-1200x1200.jpg',
-  
-];
-
-const anime = [
-  'https://cdn.sanity.io/images/rh8hx4sn/production/b4bbc9c2f97ffda393a6a85012bc88bb00dc995b-554x554.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/cb215e32efcb6393773e40328b2d8b4f5875b802-6860x5144.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/ed2f0ce1bbfc4601e61b13a5cdb9f8377a825ed6-1000x1000.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/2da13bb38ef1859b7d082cf17f6c931f7621263a-900x1600.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/d0075dd35eda4eb06aba6ed3dd9b8d9cdc7cb944-236x236.jpg',
-  'https://cdn.sanity.io/images/rh8hx4sn/production/eb0999f5db0141e3a6920709958ddb0fdc420333-1024x1024.jpg'
-];
-
-const avatarCategories = {
-  charater:{name:'Character', avatars: Chara},
-  scene: {name :'Scene' , avatars: Scene },
-  professional: { name: 'Heroes', avatars: Heroes },
-  diverse: { name: 'Series', avatars: series },
-  illustrated: { name: 'Quotes', avatars: quotes },
-  generated: { name: 'Anime', avatars: anime }
-};
 
 
 useEffect(() => {
@@ -481,17 +508,21 @@ const fetchLeaderboard = async () => {
     }
   };
 
-  const fetchRecentExpenses = async () => {
+  const fetchRecentExpenses = async (monthToUse = selectedMonth) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    let query = supabase
       .from("expenses")
       .select("id, amount, description, date")
-      .eq("user_id", user.id)
-      .order("date", { ascending: false })
-      .limit(6);
+      .eq("user_id", user.id);
 
+    if (monthToUse !== 'all') {
+      const cycleRange = getPayCycleRange(monthToUse);
+      query = query.gte("date", cycleRange.startDateStr).lte("date", cycleRange.endDateStr);
+    }
+
+    const { data } = await query.order("date", { ascending: false }).limit(6);
     setRecentExpenses(data || []);
   };
 
@@ -811,7 +842,7 @@ const handleAddGoal = async (e: React.FormEvent) => {
     fetchGoals();
   };
 
-const awardAchievement = async (badgeId) => {
+const awardAchievement = async (badgeId: string) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   
@@ -1017,9 +1048,42 @@ useEffect(() => {
   }
 }, [wishlistItems]);
 
+  const currentActiveRange = getPayCycleRange();
+  const diffMs = currentActiveRange.endDate.getTime() - new Date().getTime();
+  const daysRemainingInCycle = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const isCycleEndingSoon = daysRemainingInCycle >= 0 && daysRemainingInCycle <= 5;
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* End-of-Period Notification Banner */}
+      {isCycleEndingSoon && (
+        <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-orange-500/20 border border-yellow/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-yellow/5">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-yellow/20 text-yellow flex items-center justify-center flex-shrink-0 border border-yellow/30 shadow-inner">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-white text-base sm:text-lg">Pay Cycle Ending Soon!</h3>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-yellow/20 text-yellow font-bold border border-yellow/30">
+                  {daysRemainingInCycle === 0 ? "Ends Today" : `${daysRemainingInCycle} day${daysRemainingInCycle === 1 ? "" : "s"} left`}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-300 mt-1">
+                Your active pay cycle (<span className="font-semibold text-yellow-300">{currentActiveRange.label}</span>) is ending. Create your monthly spending report to view detailed financial insights!
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => navigate("/reports")}
+            variant="primary"
+            className="w-full sm:w-auto text-xs sm:text-sm whitespace-nowrap flex items-center justify-center gap-2 accent-gradient shadow-md px-5 py-2.5 font-semibold"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Create Spending Report
+          </Button>
+        </div>
+      )}
       {showBadgeNotification && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="glass-modal p-6 max-w-sm w-full mx-4 text-center">
@@ -1307,7 +1371,60 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* This month at a glance */}
+      {/* Cycle Preference & Range Selector Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 glass-card p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white">Period Overview</h2>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-white/10 text-gray-300 border border-white/10 uppercase tracking-wider">
+                {payCycleType === 'salary' ? `Payday (${salaryDay}th)` : 'Calendar Month'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400">
+              Showing stats for: <span className="text-yellow-300 font-medium">{selectedMonth === 'all' ? 'All Time' : getPayCycleRange(selectedMonth).label}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
+            <button
+              onClick={() => changeMonth(-1)}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+              title="Previous cycle"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="px-3 text-xs font-semibold text-white min-w-[100px] text-center truncate">
+              {selectedMonth === 'all' ? 'All Time' : getPayCycleRange(selectedMonth).shortLabel}
+            </span>
+            <button
+              onClick={() => changeMonth(1)}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+              title="Next cycle"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={() => setSelectedMonth(selectedMonth === 'all' ? new Date().toISOString().slice(0, 7) : 'all')}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+              selectedMonth === 'all'
+                ? 'bg-yellow/20 text-yellow border-yellow/40'
+                : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+            }`}
+          >
+            {selectedMonth === 'all' ? 'Current Cycle' : 'All Time'}
+          </button>
+        </div>
+      </div>
+
+      {/* Period summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
         <div className="glass-card p-5">
           <div className="flex items-center gap-3 mb-3">
@@ -1321,7 +1438,7 @@ useEffect(() => {
             {totalIncome.toFixed(2)}
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            {payCycleType === 'salary' ? getPayCycleRange().label : 'this month'}
+            {selectedMonth === 'all' ? 'all time' : getPayCycleRange(selectedMonth).label}
           </p>
         </div>
 
@@ -1339,7 +1456,7 @@ useEffect(() => {
           <p className="text-xs text-gray-400 mt-1">
             {totalIncome > 0
               ? `${Math.min(999, Math.round((totalExpenses / totalIncome) * 100))}% of income`
-              : "this month"}
+              : selectedMonth === 'all' ? 'all time' : 'selected period'}
           </p>
         </div>
 
@@ -1950,7 +2067,7 @@ useEffect(() => {
               {Object.entries(avatarCategories).map(([key, category]) => (
                 <button
                   key={key}
-                  onClick={() => setSelectedAvatarCategory(key)}
+                  onClick={() => setSelectedAvatarCategory(key as AvatarCategoryKey)}
                   className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
                     selectedAvatarCategory === key
                       ? "bg-yellow text-white border-b-2 border-yellow"
