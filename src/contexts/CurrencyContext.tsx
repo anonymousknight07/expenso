@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { getPayCycleRange, PayCycleRange, PayCycleType } from '../utils/dateUtils';
 
 interface Currency {
   code: string;
@@ -11,6 +12,11 @@ interface CurrencyContextType {
   currency: Currency;
   setCurrency: (currency: Currency) => void;
   availableCurrencies: Currency[];
+  payCycleType: PayCycleType;
+  salaryDay: number;
+  setPayCycleType: (type: PayCycleType) => void;
+  setSalaryDay: (day: number) => void;
+  getPayCycleRange: (targetMonth?: string | Date | null) => PayCycleRange;
   calculateEffectiveIncome: (targetMonth?: string) => Promise<number>;
 }
 
@@ -35,21 +41,36 @@ const CurrencyContext = createContext<CurrencyContextType>({
   currency: defaultCurrency,
   setCurrency: () => {},
   availableCurrencies: availableCurrencies,
+  payCycleType: 'calendar',
+  salaryDay: 28,
+  setPayCycleType: () => {},
+  setSalaryDay: () => {},
+  getPayCycleRange: (targetMonth?: string | Date | null) => getPayCycleRange(targetMonth, 'calendar', 28),
   calculateEffectiveIncome: async () => 0,
 });
 
 export const useCurrency = () => useContext(CurrencyContext);
 
 export const CurrencyProvider = ({ children }: { children: React.ReactNode }) => {
-  const [currency, setCurrency] = useState<Currency>(defaultCurrency);
+  const [currency, setCurrencyState] = useState<Currency>(defaultCurrency);
+  const [payCycleType, setPayCycleTypeState] = useState<PayCycleType>(() => {
+    const saved = localStorage.getItem('expenso_pay_cycle_type');
+    return saved === 'salary' ? 'salary' : 'calendar';
+  });
+  const [salaryDay, setSalaryDayState] = useState<number>(() => {
+    const saved = localStorage.getItem('expenso_salary_day');
+    return saved ? parseInt(saved, 10) : 28;
+  });
+
+  const getPayCycleRangeBound = useCallback(
+    (targetMonth?: string | Date | null) => {
+      return getPayCycleRange(targetMonth, payCycleType, salaryDay);
+    },
+    [payCycleType, salaryDay]
+  );
 
   const calculateDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const calculateDailyPay = (inHandAmount: number, date: Date) => {
-    const daysInMonth = calculateDaysInMonth(date);
-    return inHandAmount / daysInMonth;
   };
 
   const calculateEffectiveIncome = async (targetMonth?: string) => {
@@ -58,26 +79,9 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
 
     let query = supabase.from('income').select('*').eq('user_id', user.id);
 
-    if (targetMonth && targetMonth !== 'all') {
-      const [yearStr, monthStr] = targetMonth.split('-');
-      const year = parseInt(yearStr, 10);
-      const month = parseInt(monthStr, 10);
-      const daysInMonth = new Date(year, month, 0).getDate();
-
-      const startDateStr = `${yearStr}-${monthStr.padStart(2, '0')}-01`;
-      const endDateStr = `${yearStr}-${monthStr.padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}T23:59:59.999Z`;
-
-      query = query.gte('date', startDateStr).lte('date', endDateStr);
-    } else if (!targetMonth) {
-      const currentDate = new Date();
-      const yearStr = currentDate.getFullYear().toString();
-      const monthStr = String(currentDate.getMonth() + 1).padStart(2, '0');
-      const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-
-      const startDateStr = `${yearStr}-${monthStr}-01`;
-      const endDateStr = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, '0')}T23:59:59.999Z`;
-
-      query = query.gte('date', startDateStr).lte('date', endDateStr);
+    if (targetMonth !== 'all') {
+      const range = getPayCycleRange(targetMonth, payCycleType, salaryDay);
+      query = query.gte('date', range.startDateStr).lte('date', range.endDateStr);
     }
 
     const { data: incomes, error } = await query;
@@ -99,11 +103,9 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
     });
 
     if (leaves.length > 0 && totalIncome > 0) {
-      const dateForDays = targetMonth && targetMonth !== 'all'
-        ? new Date(targetMonth + "-01")
-        : new Date();
-      const daysInMonth = calculateDaysInMonth(dateForDays);
-      const dailyPay = totalIncome / daysInMonth;
+      const range = getPayCycleRange(targetMonth, payCycleType, salaryDay);
+      const daysInMonth = calculateDaysInMonth(range.startDate);
+      const dailyPay = totalIncome / (daysInMonth || 30);
       const leaveDeduction = leaves.length * dailyPay;
       totalIncome = Math.max(0, totalIncome - leaveDeduction);
     }
@@ -117,38 +119,55 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
   };
 
   useEffect(() => {
-    const loadUserCurrency = async () => {
+    const loadUserPreferences = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase
-          .from('user_preferences')
-          .select('currency_code')
-          .eq('user_id', user.id)
-          .single();
+        try {
+          const { data } = await supabase
+            .from('user_preferences')
+            .select('currency_code')
+            .eq('user_id', user.id)
+            .maybeSingle();
 
-        if (data?.currency_code) {
-          const userCurrency = availableCurrencies.find(c => c.code === data.currency_code);
-          if (userCurrency) {
-            setCurrency(userCurrency);
+          if (data?.currency_code) {
+            const userCurrency = availableCurrencies.find(c => c.code === data.currency_code);
+            if (userCurrency) setCurrencyState(userCurrency);
           }
+        } catch (err) {
+          console.warn('Failed to load user currency from database:', err);
         }
       }
     };
 
-    loadUserCurrency();
+    loadUserPreferences();
   }, []);
 
   const updateCurrency = async (newCurrency: Currency) => {
-    setCurrency(newCurrency);
+    setCurrencyState(newCurrency);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase
-        .from('user_preferences')
-        .upsert({
-          user_id: user.id,
-          currency_code: newCurrency.code
-        });
+      try {
+        await supabase
+          .from('user_preferences')
+          .upsert({
+            user_id: user.id,
+            currency_code: newCurrency.code
+          });
+      } catch (e) {
+        console.warn('Could not save currency preference:', e);
+      }
     }
+  };
+
+  const updatePayCycleType = (type: PayCycleType) => {
+    setPayCycleTypeState(type);
+    localStorage.setItem('expenso_pay_cycle_type', type);
+  };
+
+  const updateSalaryDay = (day: number) => {
+    const validDay = Math.min(31, Math.max(1, day));
+    setSalaryDayState(validDay);
+    localStorage.setItem('expenso_salary_day', String(validDay));
   };
 
   return (
@@ -156,6 +175,11 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
       currency,
       setCurrency: updateCurrency,
       availableCurrencies,
+      payCycleType,
+      salaryDay,
+      setPayCycleType: updatePayCycleType,
+      setSalaryDay: updateSalaryDay,
+      getPayCycleRange: getPayCycleRangeBound,
       calculateEffectiveIncome
     }}>
       {children}

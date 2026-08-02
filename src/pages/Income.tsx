@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Button from "../components/common/Button";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { isDateInPayCycle } from "../utils/dateUtils";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 
@@ -103,7 +104,7 @@ const Income = () => {
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [categories, setCategories] = useState<IncomeCategory[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
-  const { currency } = useCurrency();
+  const { currency, payCycleType, salaryDay, getPayCycleRange } = useCurrency();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -179,13 +180,10 @@ const Income = () => {
   };
 
   const calculateSalaryAfterLeaves = () => {
-    const currentMonthIncomes = incomes.filter((income) => {
-      const incomeDate = new Date(income.date);
-      return (
-        incomeDate.getMonth() === selectedMonth.getMonth() &&
-        incomeDate.getFullYear() === selectedMonth.getFullYear()
-      );
-    });
+    const currentRange = getPayCycleRange(selectedMonth);
+    const currentMonthIncomes = incomes.filter((income) =>
+      isDateInPayCycle(income.date, currentRange)
+    );
 
     const regularIncomes = currentMonthIncomes.filter(
       (income) => !income.is_holiday
@@ -210,12 +208,13 @@ const Income = () => {
 
     const leaveDeduction = leaveCount * dailyPayRate;
 
-    return totalIncome - leaveDeduction;
+    return Math.max(0, totalIncome - leaveDeduction);
   };
 
   const calculateTotalIncome = () => {
+    const currentRange = getPayCycleRange(selectedMonth);
     return incomes.reduce((total, income) => {
-      if (!income.is_holiday) {
+      if (!income.is_holiday && isDateInPayCycle(income.date, currentRange)) {
         return total + (income.in_hand_amount || income.amount);
       }
       return total;
@@ -307,29 +306,17 @@ const Income = () => {
   };
 
   const calculateMonthlyTotal = () => {
-    const currentDate = selectedMonth;
-    const month = currentDate.getMonth();
-    const year = currentDate.getFullYear();
-
+    const currentRange = getPayCycleRange(selectedMonth);
     return incomes
-      .filter((income) => {
-        const incomeDate = new Date(income.date);
-        return (
-          incomeDate.getMonth() === month && incomeDate.getFullYear() === year
-        );
-      })
+      .filter((income) => isDateInPayCycle(income.date, currentRange))
       .reduce((total, income) => total + income.amount, 0);
   };
 
   const calculateLeaveCount = () => {
-    const month = selectedMonth.getMonth();
-    const year = selectedMonth.getFullYear();
-
+    const currentRange = getPayCycleRange(selectedMonth);
     const leaves = incomes.filter((income) => {
-      const incomeDate = new Date(income.date);
       return (
-        incomeDate.getMonth() === month &&
-        incomeDate.getFullYear() === year &&
+        isDateInPayCycle(income.date, currentRange) &&
         income.is_holiday &&
         income.holiday_type === "leave"
       );
@@ -1012,10 +999,7 @@ const Income = () => {
               Previous Month
             </button>
             <h2 className="text-xl font-semibold">
-              {selectedMonth.toLocaleString("default", {
-                month: "long",
-                year: "numeric",
-              })}
+              {getPayCycleRange(selectedMonth).label}
             </h2>
             <button
               onClick={() => {

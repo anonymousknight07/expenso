@@ -83,7 +83,7 @@ const Reports = () => {
   const [dateRange, setDateRange] = useState<"1M" | "3M" | "6M" | "1Y">("3M");
   const [minAmount, setMinAmount] = useState<string>("");
   const [maxAmount, setMaxAmount] = useState<string>("");
-  const { currency } = useCurrency();
+  const { currency, payCycleType, salaryDay } = useCurrency();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -95,7 +95,7 @@ const Reports = () => {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange]);
+  }, [dateRange, payCycleType, salaryDay]);
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();

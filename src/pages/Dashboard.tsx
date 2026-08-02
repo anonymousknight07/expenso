@@ -201,8 +201,65 @@ const Dashboard = () => {
     price: '',
     reflection: '',
   });
-  const { currency } = useCurrency();
+  const { currency, payCycleType, salaryDay, getPayCycleRange, calculateEffectiveIncome } = useCurrency();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchFinancialData();
+  }, [payCycleType, salaryDay]);
+
+  const fetchFinancialData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const cycleRange = getPayCycleRange();
+    const startOfMonth = cycleRange.startDateStr;
+    const endOfMonth = cycleRange.endDateStr;
+
+    const monthlyIncome = await calculateEffectiveIncome();
+    setTotalIncome(monthlyIncome);
+
+    const { data: expensesData } = await supabase
+      .from('expenses')
+      .select(`
+        amount,
+        date,
+        expense_category_mappings (
+          expense_categories (
+            name,
+            color
+          )
+        )
+      `)
+      .eq('user_id', user.id)
+      .gte('date', startOfMonth)
+      .lte('date', endOfMonth);
+
+    if (expensesData) {
+      const totalExp = expensesData.reduce((sum, exp) => sum + exp.amount, 0);
+      setTotalExpenses(totalExp);
+
+      const dailyExp = expensesData.reduce((acc, exp) => {
+        const date = new Date(exp.date).toLocaleDateString();
+        acc[date] = (acc[date] || 0) + exp.amount;
+        return acc;
+      }, {});
+      setDailyExpenses(Object.entries(dailyExp).map(([date, amount]) => ({ date, amount })));
+
+      const categoryExp = expensesData.reduce((acc, exp) => {
+        const mapping: any = Array.isArray(exp.expense_category_mappings)
+          ? exp.expense_category_mappings[0]
+          : exp.expense_category_mappings;
+        const cat = Array.isArray(mapping?.expense_categories)
+          ? mapping.expense_categories[0]
+          : mapping?.expense_categories;
+        const category = cat?.name ?? "Uncategorized";
+        acc[category] = (acc[category] || 0) + exp.amount;
+        return acc;
+      }, {});
+      setCategoryExpenses(Object.entries(categoryExp).map(([name, value]) => ({ name, value })));
+    }
+  };
 
   const quoteOfTheDay =
     SAVING_QUOTES[getDayOfYear(new Date()) % SAVING_QUOTES.length];
@@ -438,71 +495,7 @@ const fetchLeaderboard = async () => {
     setRecentExpenses(data || []);
   };
 
-  const fetchFinancialData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
-
-   
-    const { data: incomeData } = await supabase
-      .from('income')
-      .select('amount, in_hand_amount')
-      .eq('user_id', user.id)
-      .gte('date', startOfMonth)
-      .lte('date', endOfMonth);
-
-    const monthlyIncome = (incomeData || []).reduce((sum, income) => 
-      sum + (income.in_hand_amount || income.amount), 0
-    );
-    setTotalIncome(monthlyIncome);
-
-   
-    const { data: expensesData } = await supabase
-      .from('expenses')
-      .select(`
-        amount,
-        date,
-        expense_category_mappings (
-          expense_categories (
-            name,
-            color
-          )
-        )
-      `)
-      .eq('user_id', user.id)
-      .gte('date', startOfMonth)
-      .lte('date', endOfMonth);
-
-    if (expensesData) {
-      const totalExp = expensesData.reduce((sum, exp) => sum + exp.amount, 0);
-      setTotalExpenses(totalExp);
-
-  
-      const dailyExp = expensesData.reduce((acc, exp) => {
-        const date = new Date(exp.date).toLocaleDateString();
-        acc[date] = (acc[date] || 0) + exp.amount;
-        return acc;
-      }, {});
-      setDailyExpenses(Object.entries(dailyExp).map(([date, amount]) => ({ date, amount })));
-
-    
-      const categoryExp = expensesData.reduce((acc, exp) => {
-        const mapping: any = Array.isArray(exp.expense_category_mappings)
-          ? exp.expense_category_mappings[0]
-          : exp.expense_category_mappings;
-        const cat = Array.isArray(mapping?.expense_categories)
-          ? mapping.expense_categories[0]
-          : mapping?.expense_categories;
-        const category = cat?.name ?? "Uncategorized";
-        acc[category] = (acc[category] || 0) + exp.amount;
-        return acc;
-      }, {});
-      setCategoryExpenses(Object.entries(categoryExp).map(([category, amount]) => ({ category, amount })));
-    }
-  };
 
 
   const fetchGoals = async () => {
@@ -1327,7 +1320,9 @@ useEffect(() => {
             {currency.symbol}
             {totalIncome.toFixed(2)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">this month</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {payCycleType === 'salary' ? getPayCycleRange().label : 'this month'}
+          </p>
         </div>
 
         <div className="glass-card p-5">

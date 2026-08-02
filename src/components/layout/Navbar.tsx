@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, CalendarDays } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { SalarySettingsModal } from "../common/SalarySettingsModal";
 
 interface NavItem {
   name: string;
@@ -35,9 +36,10 @@ const Navbar = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isSalarySettingsOpen, setIsSalarySettingsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { currency, setCurrency, availableCurrencies } = useCurrency();
+  const { currency, setCurrency, availableCurrencies, payCycleType, salaryDay } = useCurrency();
   const currencyRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
 
@@ -157,32 +159,43 @@ const Navbar = () => {
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
               {user && (
-                <div className="relative" ref={currencyRef}>
+                <>
                   <button
-                    onClick={() => setIsCurrencyMenuOpen(!isCurrencyMenuOpen)}
-                    className="text-sm font-medium text-slate-200 hover:text-white transition-colors px-3 py-1.5 rounded-full glass-chip flex items-center gap-1"
+                    onClick={() => setIsSalarySettingsOpen(true)}
+                    className="text-sm font-medium text-slate-200 hover:text-white transition-colors px-3 py-1.5 rounded-full glass-chip flex items-center gap-1.5 border border-white/10 hover:border-[#ff3c02]/50"
+                    title="Payday & Cycle Settings"
                   >
-                    {currency.code}
-                    <ChevronDown className="w-3 h-3" />
+                    <CalendarDays className="w-4 h-4 text-[#fa7041]" />
+                    <span>{payCycleType === "salary" ? `Payday (${salaryDay}th)` : "Calendar"}</span>
                   </button>
-                  {isCurrencyMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 glass-modal py-1 z-50 max-h-60 overflow-y-auto">
-                      {availableCurrencies.map((curr) => (
-                        <button
-                          key={curr.code}
-                          onClick={() => {
-                            setCurrency(curr);
-                            setIsCurrencyMenuOpen(false);
-                          }}
-                          className="block w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-white/10 transition-colors"
-                        >
-                          <span className="font-medium">{curr.code}</span>
-                          <span className="text-slate-400 ml-2">({curr.symbol})</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+
+                  <div className="relative" ref={currencyRef}>
+                    <button
+                      onClick={() => setIsCurrencyMenuOpen(!isCurrencyMenuOpen)}
+                      className="text-sm font-medium text-slate-200 hover:text-white transition-colors px-3 py-1.5 rounded-full glass-chip flex items-center gap-1"
+                    >
+                      {currency.code}
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                    {isCurrencyMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 glass-modal py-1 z-50 max-h-60 overflow-y-auto">
+                        {availableCurrencies.map((curr) => (
+                          <button
+                            key={curr.code}
+                            onClick={() => {
+                              setCurrency(curr);
+                              setIsCurrencyMenuOpen(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-white/10 transition-colors"
+                          >
+                            <span className="font-medium">{curr.code}</span>
+                            <span className="text-slate-400 ml-2">({curr.symbol})</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
               {user ? (
                 <button
@@ -248,24 +261,42 @@ const Navbar = () => {
               </div>
 
               {user && (
-                <div className="pt-3 border-t border-white/60">
-                  <p className="text-sm font-medium text-slate-300 mb-2 px-1">Currency</p>
-                  <select
-                    value={currency.code}
-                    onChange={(e) => {
-                      const newCurrency = availableCurrencies.find(
-                        (c) => c.code === e.target.value
-                      );
-                      if (newCurrency) setCurrency(newCurrency);
+                <div className="pt-3 border-t border-white/60 space-y-3">
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsSalarySettingsOpen(true);
                     }}
-                    className="w-full px-3 py-2 text-sm"
+                    className="w-full text-left px-3 py-2 rounded-xl glass-chip flex items-center justify-between text-sm text-slate-200 font-medium"
                   >
-                    {availableCurrencies.map((curr) => (
-                      <option key={curr.code} value={curr.code}>
-                        {curr.name} ({curr.symbol})
-                      </option>
-                    ))}
-                  </select>
+                    <span className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-[#fa7041]" />
+                      Payday Cycle Settings
+                    </span>
+                    <span className="text-xs text-[#fa7041] font-bold">
+                      {payCycleType === "salary" ? `Day ${salaryDay}` : "Calendar"}
+                    </span>
+                  </button>
+
+                  <div>
+                    <p className="text-sm font-medium text-slate-300 mb-2 px-1">Currency</p>
+                    <select
+                      value={currency.code}
+                      onChange={(e) => {
+                        const newCurrency = availableCurrencies.find(
+                          (c) => c.code === e.target.value
+                        );
+                        if (newCurrency) setCurrency(newCurrency);
+                      }}
+                      className="w-full px-3 py-2 text-sm"
+                    >
+                      {availableCurrencies.map((curr) => (
+                        <option key={curr.code} value={curr.code}>
+                          {curr.name} ({curr.symbol})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
 
@@ -300,6 +331,11 @@ const Navbar = () => {
           </div>
         </div>
       </header>
+
+      <SalarySettingsModal
+        isOpen={isSalarySettingsOpen}
+        onClose={() => setIsSalarySettingsOpen(false)}
+      />
     </>
   );
 };

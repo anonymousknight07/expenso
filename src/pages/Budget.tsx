@@ -80,7 +80,7 @@ const Budget = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(
     new Date().toISOString().slice(0, 7)
   );
-  const { currency, calculateEffectiveIncome } = useCurrency();
+  const { currency, payCycleType, salaryDay, getPayCycleRange, calculateEffectiveIncome } = useCurrency();
 
   const [newBudget, setNewBudget] = useState({
     category_id: "",
@@ -97,7 +97,8 @@ const Budget = () => {
   useEffect(() => {
     fetchBudgetsWithSpent();
     fetchMonthlyBudget();
-  }, [selectedMonth]);
+    updateEffectiveIncome();
+  }, [selectedMonth, payCycleType, salaryDay]);
 
   useEffect(() => {
     fetchCategories();
@@ -329,11 +330,9 @@ const Budget = () => {
 
     if (!user) return;
 
-    const startDate = `${selectedMonth}-01`;
-    const [yearStr, monthStr] = selectedMonth.split("-");
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
-    const endDate = new Date(year, month, 0).toISOString().slice(0, 10);
+    const range = getPayCycleRange(selectedMonth);
+    const startDate = range.startDateStr;
+    const endDate = range.endDateStr;
 
     const { data: budgetsData, error: budgetsError } = await supabase
       .from("budgets")
@@ -736,12 +735,14 @@ const Budget = () => {
     toast.success("Budget data refreshed");
   };
 
-  const formattedSelectedMonthName = new Date(
-    selectedMonth + "-01"
-  ).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const formattedSelectedMonthName = payCycleType === 'salary'
+    ? getPayCycleRange(selectedMonth).label
+    : new Date(
+        selectedMonth + "-01"
+      ).toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
 
   const currentSystemMonth = new Date().toISOString().slice(0, 7);
 

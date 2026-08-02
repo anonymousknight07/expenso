@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import Button from "../components/common/Button";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { isDateInPayCycle } from "../utils/dateUtils";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 
@@ -70,7 +71,7 @@ const Expenses = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
-  const { currency, calculateEffectiveIncome } = useCurrency();
+  const { currency, payCycleType, salaryDay, getPayCycleRange, calculateEffectiveIncome } = useCurrency();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
@@ -127,7 +128,7 @@ const Expenses = () => {
 
   useEffect(() => {
     updateEffectiveIncome();
-  }, [selectedMonth]);
+  }, [selectedMonth, payCycleType, salaryDay]);
 
   const changeMonth = (offset: number) => {
     const baseMonth =
@@ -265,8 +266,9 @@ const Expenses = () => {
     let filtered = expenses;
 
     if (selectedMonth !== "all") {
+      const range = getPayCycleRange(selectedMonth);
       filtered = filtered.filter((expense) =>
-        expense.date.startsWith(selectedMonth)
+        isDateInPayCycle(expense.date, range)
       );
     }
 
@@ -906,7 +908,7 @@ const Expenses = () => {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2 sm:gap-3 flex-wrap">
               Expense Tracking
               <span className="text-xs px-2.5 py-1 rounded-full bg-yellow/10 text-yellow border border-yellow/20 font-medium">
-                {selectedMonth === "all" ? "All Time" : selectedMonth}
+                {selectedMonth === "all" ? "All Time" : getPayCycleRange(selectedMonth).label}
               </span>
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase border ${monthStatus.color}`}>
                 {monthStatus.label}
