@@ -1,3 +1,4 @@
+import { modelAdapter } from '../services/ai/modelAdapter';
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -146,7 +147,7 @@ const Social = () => {
     description: "",
   });
 
-  const AI_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free";
+  const AI_MODEL = "llama3.2";
 
   const [inviteEmail, setInviteEmail] = useState("");
 
@@ -524,113 +525,38 @@ const formattedLeaderboard = data.map((profile) => ({
     setIsLoadingQuestions(true);
 
     try {
-      // Generate quiz questions
-      const quizResponse = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
+      const quizContent = await modelAdapter.chatCompletion([
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "YOUR_SITE_URL", // Optional but recommended
-            "X-Title": "Finance App", // Optional but recommended
-          },
-          body: JSON.stringify({
-            model: AI_MODEL,
-            messages: [
-              {
-                role: "system",
-                content: `Generate 4 financial literacy quiz questions with 4 options each and indicate the correct answer. 
-                Format your response as valid JSON: {
-                  "questions": [
-                    {
-                      "question": "What is compound interest?",
-                      "options": [
-                        "Interest on principal only",
-                        "Interest on principal plus accumulated interest",
-                        "Fixed interest rate",
-                        "Interest charged on loans"
-                      ],
-                      "answer": 1
-                    }
-                  ]
-                }`,
-              },
-            ],
-          }),
-        }
-      );
+          role: "system",
+          content: `Generate 4 financial literacy quiz questions with 4 options each and indicate the correct answer. Format as JSON: {"questions": [{"question": "...", "options": ["...", "..."], "answer": 0}]}`,
+        },
+      ], { jsonMode: true });
 
-      const quizData = await quizResponse.json();
-      if (!quizData.choices || quizData.choices.length === 0) {
-        throw new Error("Invalid quiz response format");
-      }
-      const quizContent = quizData.choices[0].message?.content || "";
-
-      // Parse JSON even if it's wrapped in code blocks
-      let quizJson;
-      try {
-        quizJson = JSON.parse(quizContent);
-      } catch (e) {
+      if (quizContent) {
         const match = quizContent.match(/\{[\s\S]*\}/);
-        if (match) quizJson = JSON.parse(match[0]);
-        else throw new Error("Invalid JSON format");
-      }
-
-      setQuizQuestions(quizJson.questions);
-
-      // Generate trivia questions
-      const triviaResponse = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:5173/",
-            "X-Title": "Expenso",
-          },
-          body: JSON.stringify({
-            model: AI_MODEL,
-            messages: [
-              {
-                role: "system",
-                content: `Generate 3 financial trivia questions with answers. 
-                Format your response as valid JSON: {
-                  "questions": [
-                    {
-                      "question": "What is the name of the first credit card?",
-                      "answer": "Diners Club"
-                    }
-                  ]
-                }`,
-              },
-            ],
-          }),
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          if (parsed.questions) setQuizQuestions(parsed.questions);
         }
-      );
-
-      const triviaData = await triviaResponse.json();
-      const triviaContent = triviaData.choices[0].message.content;
-
-      if (quizData.error) {
-        throw new Error(`API Error: ${quizData.error.message}`);
       }
 
-      // Parse JSON even if it's wrapped in code blocks
-      let triviaJson;
-      try {
-        triviaJson = JSON.parse(triviaContent);
-      } catch (e) {
+      const triviaContent = await modelAdapter.chatCompletion([
+        {
+          role: "system",
+          content: `Generate 3 financial trivia questions with answers. Format as JSON: {"questions": [{"question": "...", "answer": "..."}]}`,
+        },
+      ], { jsonMode: true });
+
+      if (triviaContent) {
         const match = triviaContent.match(/\{[\s\S]*\}/);
-        if (match) triviaJson = JSON.parse(match[0]);
-        else throw new Error("Invalid JSON format");
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          if (parsed.questions) setTriviaQuestions(parsed.questions);
+        }
       }
-
-      setTriviaQuestions(triviaJson.questions);
     } catch (error) {
       console.error("Error generating questions:", error);
-      toast.error("Failed to generate questions. Using default questions.");
+      toast.error("Using default questions.");
 
       // Fallback to default questions
       setQuizQuestions([

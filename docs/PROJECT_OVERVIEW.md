@@ -48,7 +48,7 @@ Below is a curated list of the most important functions that touch the data laye
 | File | Function | Description |
 |------|----------|-------------|
 | `src/pages/Social.tsx` | `fetchUser` | Retrieves the current user profile from Supabase Auth and stores it in local state. |
-| `src/pages/Social.tsx` | `fetchGameSuggestions` | Calls an external **OpenRouter** model (via a custom wrapper) to generate game‑recommendation content. |
+| `src/pages/Social.tsx` | `fetchGameSuggestions` | Calls the local/self-hosted open-weight model serving layer to generate game‑recommendation content. |
 | `src/pages/Social.tsx` | `fetchLeaderboard` | Pulls leaderboard data from Supabase `leaderboard` table. |
 | `src/pages/Social.tsx` | `fetchChallenges` | Retrieves challenge data; optionally receives the current user to personalize results. |
 | `src/pages/Social.tsx` | `fetchChatStats` | Aggregates chat statistics for a given user ID. |
@@ -88,7 +88,7 @@ The project treats Supabase as **the source of truth**. The workflow is:
 1. **Auth** – Clerk (or Supabase Auth) provides a JWT that the client stores via the Supabase SDK.
 2. **CRUD** – Front‑end components call `supabase.from('<table>').select()/insert()/update()/delete()` directly.
 3. **Realtime** – Supabase Realtime streams are *not* used; instead a custom WebSocket server relays chat‑related events for finer‑grained control.
-4. **Serverless Functions** – Only the news proxy lives in `api/`; any heavy lifting (e.g., OpenRouter calls) is performed client‑side or via separate serverless services.
+4. **Serverless Functions & AI Layer** – Only the news proxy lives in `api/`; AI intent extraction & chat is performed via the open-weight model serving layer (`src/services/ai/modelAdapter.ts`) with zero paid external API dependencies.
 
 > **Why this works** – Supabase handles connection pooling, row‑level security, and edge caching, allowing the front‑end to act like a thin client without a traditional backend.
 
@@ -125,7 +125,7 @@ If a future feature requires complex business logic that cannot be expressed wit
 ## Additional Resources
 - **Supabase Docs** – https://supabase.com/docs
 - **Clerk Docs** – https://clerk.dev/docs
-- **OpenRouter Model** – meta‑llama/llama‑3.3‑70b‑instruct (used for game suggestions)
+- **Open-Weight AI Model** – Llama 3.2 / Qwen 2.5 served locally or via self-hosted Ollama/vLLM endpoints with full deterministic fallback
 - **Vercel Serverless Functions** – https://vercel.com/docs/concepts/functions/serverless-functions
 - **WebSocket Server Repo** – `https://github.com/spide/expo-backend-0kn5`
 

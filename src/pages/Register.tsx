@@ -138,7 +138,7 @@ const Register = () => {
         throw new Error(`Failed to create profile: ${profileError.message}`);
       }
 
-      navigate('/dashboard');
+      navigate('/assistant');
     } catch (error) {
       console.error('Registration error:', error);
       // Handle specific error types

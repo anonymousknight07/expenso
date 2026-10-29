@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -7,6 +8,12 @@ export default defineConfig({
   server: {
     // Respect the harness-assigned port (Vite doesn't read PORT by itself)
     port: Number(process.env.PORT) || 5173,
+  },
+  // Vitest configuration — explicit to prevent auto-discovery surprises
+  test: {
+    environment: 'node',
+    include: ['tests/**/*.test.ts'],
+    globals: false,
   },
   plugins: [
     react(),

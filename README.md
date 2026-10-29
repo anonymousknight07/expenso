@@ -3,7 +3,7 @@
 
 #  Expenso - Smart Expense Tracker
 
-**Expenso** is a powerful and intelligent expense tracker designed to help you take control of your finances. From budgeting to visual analytics, goal-based savings to anti-impulse journaling, Expenso is your all-in-one financial companion.
+**Expenso** is an AI-first personal finance platform powered by **Penny**, your intelligent conversational finance assistant. Just tell Penny what you earned or spent in plain language — no forms, no friction. Penny understands natural language, resolves relative dates, infers categories, and records transactions directly to your account. From budgeting to visual analytics, goal-based savings to detailed reports, Expenso is your all-in-one financial companion.
 
 ---
 
@@ -94,11 +94,25 @@
 - Message Replies, Editing & Deletion
 - Emoji Picker & Message Search
 
+###  Penny AI Assistant (Primary Experience)
+- **Natural language transaction entry** — "I spent ₹450 on dinner yesterday"
+- **Conversational multi-turn flows** — Penny asks only for missing information
+- **Automatic date resolution** — today, yesterday, last Monday, 3 days ago, etc.
+- **Smart category inference** — infers Food & Dining, Groceries, Transport, etc. from descriptions
+- **Income & expense tracking** via chat — Salary, Freelance, Side income, and more
+- **Financial queries** — "How much did I spend on food last week?", "What's my balance this month?"
+- **Inline transaction review** — edit or delete any recorded transaction from the chat
+- **Voice input** — speak your transactions using browser-native speech recognition
+- **AI model status badge** — shows whether Ollama model is connected or running in deterministic offline mode
+- **Works offline** (deterministic fallback) — core transaction recording works even without an AI model
+
 ###  AI Chatbot (Penny)
-- Financial Advisor Chatbot
+- Financial Advisor Chatbot (floating widget, Supabase Edge Function powered)
 - Suggested Questions Based on Auth Status
 - Basic Q&A for Non-Logged-In Users
 - Full Financial Advisory for Authenticated Users
+
+> **Note:** The full conversational transaction entry experience lives in the **Penny AI Assistant** page (/assistant), which is the default landing screen after login.
 
 ---
 
@@ -160,6 +174,8 @@ expense-tracker
 - **jsPDF** + **xlsx** (PDF & Excel export)
 - **lucide-react** (icons)
 - **react-hot-toast** (notifications)
+- **Vitest** (unit testing — 39 tests)
+- **Ollama / vLLM** (optional self-hosted AI model server for Penny)
 
 ---
 
@@ -171,9 +187,16 @@ expense-tracker
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    GNEWS_API_KEY=your_gnews_api_key  # optional, for Market News
+   VITE_AI_API_URL=http://localhost:11434/v1  # optional, Ollama for Penny AI
+   VITE_AI_MODEL=llama3.2                     # optional, model name
    ```
 3. Run `npm install`
-4. Run `npm run dev` to start the development server
+4. *(Optional)* Start Ollama for AI-powered Penny: `docker compose -f docker-compose.ai.yml up -d`
+5. Run `npm run dev` to start the development server
+6. Open [http://localhost:5173](http://localhost:5173) — Penny is the default landing page after login
+
+> Penny works offline in **deterministic mode** even without an Ollama model running.
+> Run `npm test` to execute all 39 automated unit tests.
 
 ---
 ## The Workflow 

@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  # Option A: Ollama Service (Recommended for local dev & lightweight production)
+  # Preconfigured for open-weight models (Llama 3.2 3B, Qwen 2.5 7B, Mistral 7B)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: expenso-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_storage:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_NUM_PARALLEL=4
+    # Uncomment deploy block below for NVIDIA GPU acceleration
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # Model initializer container: pulls the pinned model automatically on startup
+  ollama-init:
+    image: curlimages/curl:latest
+    depends_on:
+      - ollama
+    restart: "no"
+    command: >
+      sh -c "sleep 3 && curl -X POST http://ollama:11434/api/pull -d '{\"name\": \"llama3.2\"}'"
+
+volumes:
+  ollama_storage:
+    name: expenso_ollama_storage
+

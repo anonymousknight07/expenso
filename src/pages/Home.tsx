@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import Button from '../components/common/Button';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +22,7 @@ const Home = () => {
 
   const handleGetStarted = () => {
     if (user) {
-      navigate('/dashboard');
+      navigate('/assistant');
     } else {
       navigate('/register');
     }
@@ -53,8 +53,9 @@ const Home = () => {
               <div className="h-1 w-full accent-gradient rounded-full mt-4"></div>
             </div>
             <p className="text-gray-300 text-lg md:text-xl">
-              Take control of your finances with our intuitive expense tracking app. 
-              Monitor your spending, set budgets, and achieve your financial goals.
+              Meet <span className="text-yellow font-semibold">Penny</span> &#8212; your AI-powered personal finance assistant.
+              Just tell Penny what you earned or spent, in plain language, and it handles the rest.
+              No forms, no friction.
             </p>
             <div className="mt-4">
               <Button onClick={handleGetStarted} variant="primary" className="inline-flex items-center">
@@ -65,6 +66,10 @@ const Home = () => {
 
             {/* Features Section */}
             <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-6 glass-inset hover:border-yellow/50 hover:bg-white/[0.09] transition-colors duration-300 col-span-1 md:col-span-2 border border-yellow/20 bg-yellow/[0.03]">
+                <h3 className="text-xl font-serif mb-3 flex items-center gap-2"><Sparkles className="w-5 h-5 text-yellow" /> Penny AI Assistant</h3>
+                <p className="text-gray-300">Talk to Penny in plain language &#8212; &ldquo;I spent &#8377;450 on dinner yesterday&rdquo; &#8212; and your transactions are recorded instantly. No forms required.</p>
+              </div>
               <div className="p-6 glass-inset hover:border-yellow/50 hover:bg-white/[0.09] transition-colors duration-300">
                 <h3 className="text-xl font-serif mb-3">Expense Tracking</h3>
                 <p className="text-gray-300">Monitor all your expenses in one place with detailed categorization and insights.</p>

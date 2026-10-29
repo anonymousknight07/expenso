@@ -1,6 +1,4 @@
-import { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { supabase } from "./lib/supabase";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
@@ -8,11 +6,7 @@ import Expenses from "./pages/Expenses";
 import Income from "./pages/Income";
 import Budget from "./pages/Budget";
 import Reports from "./pages/Reports";
-// import JarSystem from "./pages/JarSystem";
-// import Social from "./pages/Social";
-import ExpensoShop from "./pages/ExpensoShop";
-import NoSpendTracker from "./pages/NoSpendTracker";
-import FinancialTimeMachine from "./pages/FinancialTimeMachine";
+import PennyPage from "./pages/PennyPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Layout from "./components/layout/Layout";
@@ -26,7 +20,6 @@ import ChatBot from "./components/chat/ChatBot";
 import MarketNews from "./pages/MarketNews";
 import UpiSync from "./pages/UpiSync";
 import Achievements from "./pages/Achievements";
-
 import NotFound from "./pages/NotFound";
 
 // Helper to reduce repetition
@@ -37,27 +30,6 @@ const PrivatePage = ({ children }: { children: React.ReactNode }) => (
 );
 
 function App() {
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        try {
-          const saved = localStorage.getItem(`expenso_shop_${session.user.id}`);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (parsed.equippedTheme) {
-              const themeValue = parsed.equippedTheme.replace("theme_", "");
-              if (themeValue === "dark" || !themeValue) {
-                document.documentElement.removeAttribute("data-theme");
-              } else {
-                document.documentElement.setAttribute("data-theme", themeValue);
-              }
-            }
-          }
-        } catch (e) {}
-      }
-    });
-  }, []);
-
   return (
     <CurrencyProvider>
       <Router>
@@ -84,7 +56,7 @@ function App() {
             }
           />
 
-          {/* ── Protected routes ────────────────────── */}
+          {/* ── Public Landing Page ──────────────────── */}
           <Route
             path="/"
             element={
@@ -93,6 +65,26 @@ function App() {
               </Layout>
             }
           />
+
+          {/* ── Protected routes: Penny Assistant (Default) ──────── */}
+          <Route
+            path="/assistant"
+            element={
+              <PrivatePage>
+                <PennyPage />
+              </PrivatePage>
+            }
+          />
+          <Route
+            path="/penny"
+            element={
+              <PrivatePage>
+                <PennyPage />
+              </PrivatePage>
+            }
+          />
+
+          {/* ── Secondary Navigation ─────────────────── */}
           <Route
             path="/dashboard"
             element={
@@ -133,38 +125,6 @@ function App() {
               </PrivatePage>
             }
           />
-          {/* <Route
-            path="/jar-system"
-            element={
-              <PrivatePage>
-                <JarSystem />
-              </PrivatePage>
-            }
-          /> */}
-          <Route
-            path="/shop"
-            element={
-              <PrivatePage>
-                <ExpensoShop />
-              </PrivatePage>
-            }
-          />
-          <Route
-            path="/no-spend"
-            element={
-              <PrivatePage>
-                <NoSpendTracker />
-              </PrivatePage>
-            }
-          />
-          <Route
-            path="/time-machine"
-            element={
-              <PrivatePage>
-                <FinancialTimeMachine />
-              </PrivatePage>
-            }
-          />
           <Route
             path="/market"
             element={
@@ -173,14 +133,6 @@ function App() {
               </PrivatePage>
             }
           />
-          {/* <Route
-            path="/social"
-            element={
-              <PrivatePage>
-                <Social />
-              </PrivatePage>
-            }
-          /> */}
           <Route
             path="/receipt-scanner"
             element={
@@ -205,6 +157,11 @@ function App() {
               </PrivatePage>
             }
           />
+
+          {/* ── Graceful Redirects for Removed Features ── */}
+          <Route path="/shop" element={<Navigate to="/assistant" replace />} />
+          <Route path="/no-spend" element={<Navigate to="/assistant" replace />} />
+          <Route path="/time-machine" element={<Navigate to="/assistant" replace />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -341,7 +341,7 @@ const ChatBot = () => {
       lowerQuestion.includes("what is expenso") ||
       lowerQuestion.includes("about expenso")
     ) {
-      return "Expenso is a comprehensive expense tracking and financial management application that helps users monitor their spending, create budgets, and achieve their financial goals with gamified RPG elements and savage AI coaching.";
+      return "Expenso is an AI-first financial management platform powered by Penny to track expenses and income through natural conversation, set budgets, and achieve financial goals.";
     }
 
     if (
@@ -357,7 +357,7 @@ const ChatBot = () => {
       lowerQuestion.includes("what can") ||
       lowerQuestion.includes("functionality")
     ) {
-      return "Expenso features include: Expense tracking, Budget management, Financial RPG Shop (avatar frames & themes), No-Spend Streaks with Daily Fortune Wheel, Financial Time Machine simulator, and this Savage AI Roast Coach!";
+      return "Expenso features include: Conversational income and expense tracking with Penny AI, real-time budget management, interactive financial summaries, reports, and receipt scanning.";
     }
 
     return "Please log in to unlock the Savage Roast My Dashboard AI Coach and transaction analysis!";

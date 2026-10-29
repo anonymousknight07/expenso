@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { ALL_BADGES, syncUserXPAndAchievements } from '../lib/achievements';
-import { SHOP_ITEMS } from './ExpensoShop';
+
 
 import {
   Camera,
@@ -491,11 +491,11 @@ const fetchLeaderboard = async () => {
       }
 
       try {
-        const saved = localStorage.getItem(`expenso_shop_${user.id}`);
+        const saved = null;
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.equippedFrame) {
-            const item = SHOP_ITEMS.find((i) => i.id === parsed.equippedFrame);
+            const item = null as any;
             if (item?.previewClass) {
               setEquippedFrameClass(item.previewClass);
             }
@@ -1198,47 +1198,52 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Gamification Quick Hub */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <Link
-          to="/shop"
-          className="glass-card p-4 flex items-center gap-3 hover:border-yellow/50 transition-all group"
-        >
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
-            ⚔️
+      {/* Penny AI Assistant Spotlight */}
+      <div className="glass-card p-6 mb-8 border border-white/10 hover:border-yellow/30 transition-all bg-gradient-to-r from-white/[0.04] to-yellow/[0.02]">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ff3c02] to-amber-500 flex items-center justify-center text-white text-2xl shadow-lg shadow-[#ff3c02]/20">
+              💬
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-white">Penny AI Finance Assistant</h3>
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Active
+                </span>
+              </div>
+              <p className="text-xs text-gray-300 mt-0.5">
+                Record expenses, income, and get instant financial insights through natural conversation.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xs font-bold text-white group-hover:text-yellow">Expenso Shop</h3>
-            <p className="text-[10px] text-gray-400">Gear & Themes</p>
-          </div>
-        </Link>
+          <Link
+            to="/assistant"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#ff3c02] to-amber-500 text-white font-medium text-sm hover:opacity-90 shadow-lg shadow-[#ff3c02]/20 transition-all whitespace-nowrap"
+          >
+            Chat with Penny &rarr;
+          </Link>
+        </div>
 
-        <Link
-          to="/no-spend"
-          className="glass-card p-4 flex items-center gap-3 hover:border-emerald-500/50 transition-all group"
-        >
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
-            🔥
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-white group-hover:text-emerald-400">No-Spend Streaks</h3>
-            <p className="text-[10px] text-gray-400">Daily Fortune Wheel</p>
-          </div>
-        </Link>
-
-        <Link
-          to="/time-machine"
-          className="glass-card p-4 flex items-center gap-3 hover:border-purple-500/50 transition-all group"
-        >
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
-            🔮
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-white group-hover:text-purple-400">Time Machine</h3>
-            <p className="text-[10px] text-gray-400">Wealth Simulator</p>
-          </div>
-        </Link>
+        <div className="mt-4 pt-4 border-t border-white/5 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-400 font-medium mr-1">Try saying:</span>
+          {[
+            "I spent ₹450 on dinner yesterday",
+            "I got my salary today",
+            "How much did I spend this month?",
+            "Compare this month with last month",
+          ].map((prompt, idx) => (
+            <Link
+              key={idx}
+              to={`/assistant?q=${encodeURIComponent(prompt)}`}
+              className="text-xs px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 hover:border-yellow/40 transition-colors"
+            >
+              "{prompt}"
+            </Link>
+          ))}
+        </div>
       </div>
+
       {/* Mood Tracker Section */}
       <div className="glass-card p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">
